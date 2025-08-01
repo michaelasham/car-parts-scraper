@@ -1,0 +1,4 @@
+node_modules/
+.env
+tmp_profile_superetka/
+tmp_profile/
