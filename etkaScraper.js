@@ -34,7 +34,6 @@ async function scrapeSuperEtka(vin, partType) {
     fs.unlinkSync(singletonLockPath);
   }
 
-const puppeteer = require('puppeteer');
 
 const browser = await puppeteer.launch({
   headless: true,
@@ -46,6 +45,7 @@ const browser = await puppeteer.launch({
   ],
   executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
 });
+
 
 
   const page = await browser.newPage();
