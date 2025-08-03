@@ -37,8 +37,15 @@ async function scrapeSuperEtka(vin, partType) {
 
 const browser = await puppeteer.launch({
   headless: true,
-  args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  executablePath: puppeteer.executablePath(), // Always use Puppeteer’s own Chromium
+  executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome',
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--disable-software-rasterizer'
+  ],
+  userDataDir: '/data/chrome-profile'  // ✅ Persistent session data
 });
 
 

@@ -33,5 +33,7 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false
 # Expose port (Render expects this)
 EXPOSE 10000
 
+RUN mkdir -p /data/chrome-profile && chmod -R 777 /data
+
 # Start server
 CMD ["npm", "start"]
