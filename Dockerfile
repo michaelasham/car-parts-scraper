@@ -28,7 +28,6 @@ COPY . .
 
 # Puppeteer environment variables
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome
 
 # Expose port (Render expects this)
 EXPOSE 10000
