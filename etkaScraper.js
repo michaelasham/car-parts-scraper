@@ -37,14 +37,10 @@ async function scrapeSuperEtka(vin, partType) {
 
 const browser = await puppeteer.launch({
   headless: true,
-  args: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-dev-shm-usage',
-    '--disable-gpu',
-  ],
-  executablePath: puppeteer.executablePath(), // ✅ ensures Chromium is used
+  args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
 });
+
 
 
 
