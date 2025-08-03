@@ -30,9 +30,30 @@ puppeteer.use(StealthPlugin());
 const USERNAME = process.env.ETKA_USER;
 const PASSWORD = process.env.ETKA_PASS;
 const N8N_WEBHOOK_URL = process.env.N8N_URL;
+let browser; // ✅ Global browser instance
 
 const app = express();
 app.use(express.json());
+
+async function initBrowser() {
+  if (!browser) {
+    browser = await puppeteer.launch({
+      headless: true,
+      userDataDir: profileDir,   // ✅ Persistent session
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-software-rasterizer'
+      ]
+    });
+    console.log('✅ Puppeteer launched with persistent session');
+  }
+  return browser;
+}
+
+
 
 async function scrapeSuperEtka(vin, partType) {
   const singletonLockPath = './tmp_profile_superetka/SingletonLock';
@@ -42,24 +63,15 @@ async function scrapeSuperEtka(vin, partType) {
   }
 
 
-const browser = await puppeteer.launch({
-  headless: true,
-  args: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-dev-shm-usage',
-    '--disable-gpu',
-    '--disable-software-rasterizer'
-  ],
-  userDataDir: '/data/chrome-profile'  // ✅ Persistent session data
-});
+const browserInstance = await initBrowser();
+const page = await browserInstance.newPage();
 
 
 
 
 
 
-  const page = await browser.newPage();
+
   await page.goto('https://superetka.com/etka', { waitUntil: 'networkidle0' });
 
   // Only login if needed
@@ -225,7 +237,7 @@ const partInfo = await page.evaluate((partType) => {
 
   console.log(`🔩 ${partType} Part Number:`, partInfo?.num || 'Not found');
 
-  await browser.close();
+  await page.close();
   return partInfo?.num;
 }
 
@@ -257,6 +269,7 @@ app.post('/superetka/scrape', async (req, res) => {
 
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
+  await initBrowser(); // ✅ Launch browser on startup
   console.log(`🚀 SuperETKA scraper listening on port ${PORT}`);
 });
