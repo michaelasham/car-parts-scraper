@@ -12,12 +12,19 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const profilePath = path.join(__dirname, 'tmp_profile_superetka', 'SingletonLock');
-if (fs.existsSync(profilePath)) {
-  fs.unlinkSync(profilePath);
-  console.log('🔓 Removed leftover SingletonLock file');
+const profileDir = path.join(__dirname, 'tmp_profile_superetka');
+const lockFile = path.join(profileDir, 'SingletonLock');
+
+// Ensure profile folder exists
+if (!fs.existsSync(profileDir)) {
+  fs.mkdirSync(profileDir, { recursive: true });
 }
 
+// Remove leftover lock file
+if (fs.existsSync(lockFile)) {
+  fs.unlinkSync(lockFile);
+  console.log('🔓 Removed leftover SingletonLock file');
+}
 puppeteer.use(StealthPlugin());
 
 const USERNAME = process.env.ETKA_USER;
