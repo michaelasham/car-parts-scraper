@@ -34,22 +34,19 @@ async function scrapeSuperEtka(vin, partType) {
     fs.unlinkSync(singletonLockPath);
   }
 
-  const browser = await puppeteer.launch({
-    executablePath: '/usr/bin/google-chrome-stable',
-  headless: 'new',
-  userDataDir: `./tmp_profile_superetka_${Date.now()}`,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-infobars',
-      '--disable-notifications',
-      '--disable-features=AutofillServerCommunication,AutofillProfileCleanup',
-      '--disable-save-password-bubble',
-      '--password-store=basic',
-      '--no-default-browser-check',
-      '--disable-popup-blocking'
-    ]
-  });
+const puppeteer = require('puppeteer');
+
+const browser = await puppeteer.launch({
+  headless: true,
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+  ],
+  executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
+});
+
 
   const page = await browser.newPage();
   await page.goto('https://superetka.com/etka', { waitUntil: 'networkidle0' });
