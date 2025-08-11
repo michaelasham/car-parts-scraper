@@ -2,12 +2,12 @@
   "name": "superetka-scraper",
   "version": "1.0.0",
   "description": "",
-  "main": "etkaScraper.js",
+  "type": "module",
   "scripts": {
-  "start": "node etkaScraper.js",
-  "postinstall": "puppeteer install"
-}
-,
+    "start:scraper": "node etkaScraper.js",
+    "start:vehicle": "node etkaVehicleInfo.js",
+    "postinstall": "puppeteer install"
+  },
   "dependencies": {
     "axios": "^1.11.0",
     "dotenv": "^16.6.1",
