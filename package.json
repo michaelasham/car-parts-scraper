@@ -4,11 +4,12 @@
   "description": "",
   "type": "module",
   "scripts": {
-  "start": "node etkaScraper.js",           
+  "start": "concurrently \"npm run start:scraper\" \"npm run start:vehicle\"",
   "start:scraper": "node etkaScraper.js",
   "start:vehicle": "node etkaVehicleInfo.js",
   "postinstall": "puppeteer install"
-},
+}
+,
   "dependencies": {
     "axios": "^1.11.0",
     "dotenv": "^16.6.1",
@@ -16,5 +17,8 @@
     "puppeteer": "^24.15.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
   }
 }
