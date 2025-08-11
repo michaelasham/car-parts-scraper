@@ -12,7 +12,7 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const profileDir = path.join(__dirname, 'tmp_profile_superetka');
+const profileDir = path.join(__dirname, 'tmp_profile_superetka_scraper');
 const lockFile = path.join(profileDir, 'SingletonLock');
 
 // Ensure profile folder exists
