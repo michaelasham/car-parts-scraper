@@ -4,10 +4,11 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "start:scraper": "node etkaScraper.js",
-    "start:vehicle": "node etkaVehicleInfo.js",
-    "postinstall": "puppeteer install"
-  },
+  "start": "node etkaScraper.js",           
+  "start:scraper": "node etkaScraper.js",
+  "start:vehicle": "node etkaVehicleInfo.js",
+  "postinstall": "puppeteer install"
+},
   "dependencies": {
     "axios": "^1.11.0",
     "dotenv": "^16.6.1",
