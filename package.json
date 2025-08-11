@@ -4,9 +4,7 @@
   "description": "",
   "type": "module",
   "scripts": {
-  "start": "concurrently \"npm run start:scraper\" \"npm run start:vehicle\"",
-  "start:scraper": "node etkaScraper.js",
-  "start:vehicle": "node etkaVehicleInfo.js",
+  "start": "node server.js",
   "postinstall": "puppeteer install"
 }
 ,
