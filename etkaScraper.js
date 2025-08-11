@@ -268,7 +268,7 @@ app.post('/superetka/scrape', async (req, res) => {
 });
 
 
-const PORT = process.env.PORT || 3000;
+const PORT =  3000;
 app.listen(PORT, async () => {
   await initBrowser(); // ✅ Launch browser on startup
   console.log(`🚀 SuperETKA scraper listening on port ${PORT}`);
