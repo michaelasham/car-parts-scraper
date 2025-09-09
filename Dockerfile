@@ -15,8 +15,18 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Playwright properly with Python module path
-RUN python3 -m pip install playwright
+# Install Python development tools and upgrade pip
+RUN apt-get update && apt-get install -y \
+    python3-dev \
+    build-essential \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip and install playwright with debugging info
+RUN python3 -m pip install --upgrade pip && \
+    python3 -m pip install --verbose --no-cache-dir playwright==1.40.0
+
+# Install only Chromium browser to reduce size
 RUN python3 -m playwright install chromium
 
 
