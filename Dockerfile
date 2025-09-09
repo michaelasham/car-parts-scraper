@@ -6,6 +6,13 @@ RUN apt-get update && apt-get install -y curl \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
+
+# Copy bmw-scraper package.json and install its dependencies
+COPY bmw-scraper/package*.json ./bmw-scraper/
+WORKDIR /app/bmw-scraper
+RUN npm install
+
+
 # Set working directory
 WORKDIR /app
 
