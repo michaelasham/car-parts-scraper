@@ -84,7 +84,7 @@ app.get("/get-car-details/:vin", (req, res) => {
   });
 });
 
-const PORT = 5000;
+const PORT = 10001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
