@@ -28,6 +28,9 @@ COPY package*.json ./
 # Install Node.js dependencies
 RUN npm install
 
+# Upgrade pip and install Python dependencies
+RUN pip3 install --upgrade pip setuptools wheel
+
 # Install Python dependencies (create requirements.txt if needed)
 # COPY requirements.txt ./
 # RUN pip3 install -r requirements.txt
