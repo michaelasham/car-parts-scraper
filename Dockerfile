@@ -34,10 +34,6 @@ WORKDIR /app/bmw-scraper
 RUN npm install
 WORKDIR /app
 
-# Install Python dependencies for bmw-scraper
-# Create a requirements.txt file if it doesn't exist
-RUN echo "beautifulsoup4>=4.9.0\nrequests>=2.23.0\nselenium>=4.0.0" > /app/bmw-scraper/requirements.txt
-RUN pip install -r /app/bmw-scraper/requirements.txt
 
 # Copy remaining project files
 COPY . .
@@ -46,9 +42,7 @@ COPY . .
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false
 
 # Expose ports (Render expects this)
-# 10000 for superetka-scraper
-# 10001 for bmw-scraper
-EXPOSE 10000 10001
+EXPOSE 10000
 
 RUN mkdir -p /data/chrome-profile && chmod -R 777 /data
 
