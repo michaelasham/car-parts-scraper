@@ -46,11 +46,6 @@ EXPOSE 10000
 
 RUN mkdir -p /data/chrome-profile && chmod -R 777 /data
 
-# Create a startup script to run both services
-RUN echo '#!/bin/bash\n\
-    npm start &\n\
-    cd /app/bmw-scraper && node server.js &\n\
-    wait\n' > /app/start.sh && chmod +x /app/start.sh
 
-# Start both servers
-CMD ["/app/start.sh"]
+# Start server
+CMD ["npm", "start"]
