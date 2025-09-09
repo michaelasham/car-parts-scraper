@@ -2,3 +2,7 @@ node_modules/
 .env
 tmp_profile_superetka/
 tmp_profile/
+bmw-scraper/__pycache__/
+bmw-scraper/node_modules/
+*.pyc
+*.pyo

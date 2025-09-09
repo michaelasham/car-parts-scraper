@@ -12,8 +12,12 @@ RUN apt-get update && apt-get install -y \
     libxrender1 libxss1 libxtst6 fonts-liberation \
     libnss3 lsb-release xdg-utils \
     libgbm1 \
+    python3 python3-pip \
     --no-install-recommends \
- && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Playwright
+RUN pip install playwright && playwright install
 
 # Set working directory
 WORKDIR /app
@@ -24,16 +28,35 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
+# Copy bmw-scraper package.json and install its dependencies
+COPY bmw-scraper/package*.json ./bmw-scraper/
+WORKDIR /app/bmw-scraper
+RUN npm install
+WORKDIR /app
+
+# Install Python dependencies for bmw-scraper
+# Create a requirements.txt file if it doesn't exist
+RUN echo "beautifulsoup4>=4.9.0\nrequests>=2.23.0\nselenium>=4.0.0" > /app/bmw-scraper/requirements.txt
+RUN pip install -r /app/bmw-scraper/requirements.txt
+
 # Copy remaining project files
 COPY . .
 
 # Puppeteer environment variables
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false
 
-# Expose port (Render expects this)
-EXPOSE 10000
+# Expose ports (Render expects this)
+# 10000 for superetka-scraper
+# 10001 for bmw-scraper
+EXPOSE 10000 10001
 
 RUN mkdir -p /data/chrome-profile && chmod -R 777 /data
 
-# Start server
-CMD ["npm", "start"]
+# Create a startup script to run both services
+RUN echo '#!/bin/bash\n\
+    npm start &\n\
+    cd /app/bmw-scraper && node server.js &\n\
+    wait\n' > /app/start.sh && chmod +x /app/start.sh
+
+# Start both servers
+CMD ["/app/start.sh"]
