@@ -13,11 +13,14 @@ RUN apt-get update && apt-get install -y \
     libnss3 lsb-release xdg-utils \
     libgbm1 \
     python3 python3-pip \
+    # Additional dependencies for Playwright
+    libwoff1 libopus0 libwebp6 libwebpdemux2 libenchant1c2a \
+    libgudev-1.0-0 libsecret-1-0 libhyphen0 libgles2 \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Playwright
-RUN pip install playwright && python -m playwright install
+# Install Playwright with --with-deps flag
+RUN pip install playwright && python -m playwright install --with-deps
 
 # Set working directory
 WORKDIR /app
