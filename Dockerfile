@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Playwright
-RUN pip install playwright && playwright install
+RUN pip install playwright && python -m playwright install
 
 # Set working directory
 WORKDIR /app
