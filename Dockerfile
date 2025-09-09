@@ -1,9 +1,10 @@
 FROM node:20-slim
 
-# Install system dependencies (for Puppeteer & Playwright)
+# Install system dependencies (for Puppeteer, Playwright and Python build)
 RUN apt-get update && apt-get install -y \
     wget gnupg ca-certificates curl \
     python3 python3-pip python3-venv python3-setuptools python3-wheel \
+    build-essential \
     gconf-service libasound2 libatk1.0-0 libc6 libcairo2 libcups2 \
     libdbus-1-3 libexpat1 libfontconfig1 libgcc1 libgconf-2-4 \
     libgdk-pixbuf2.0-0 libglib2.0-0 libgtk-3-0 libnspr4 \
@@ -16,9 +17,11 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Playwright for Python (no --with-deps to avoid apt conflicts)
-RUN pip3 install --no-cache-dir playwright \
-    && playwright install chromium
+# Upgrade pip first (important for manylinux wheels)
+RUN pip3 install --no-cache-dir --upgrade pip
+
+# Install Playwright for Python
+RUN pip3 install --no-cache-dir playwright
 
 # Set working directory
 WORKDIR /app
