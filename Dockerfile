@@ -1,47 +1,25 @@
-FROM node:20-slim
+FROM mcr.microsoft.com/playwright:v1.47.0-jammy
 
-# Install system dependencies (for Puppeteer, Playwright and Python build)
-RUN apt-get update && apt-get install -y \
-    wget gnupg ca-certificates curl \
-    python3 python3-pip python3-venv python3-setuptools python3-wheel \
-    build-essential \
-    gconf-service libasound2 libatk1.0-0 libc6 libcairo2 libcups2 \
-    libdbus-1-3 libexpat1 libfontconfig1 libgcc1 libgconf-2-4 \
-    libgdk-pixbuf2.0-0 libglib2.0-0 libgtk-3-0 libnspr4 \
-    libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 \
-    libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 \
-    libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 \
-    libxrender1 libxss1 libxtst6 fonts-liberation \
-    libnss3 lsb-release xdg-utils \
-    libgbm1 \
-    --no-install-recommends \
+# Install Node.js 20 (the base comes with Node 18 by default)
+RUN apt-get update && apt-get install -y curl \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
-
-# Upgrade pip first (important for manylinux wheels)
-RUN pip3 install --no-cache-dir --upgrade pip
-
-# Install Playwright for Python
-RUN pip3 install --no-cache-dir playwright
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files first for caching
+# Copy package files first
 COPY package*.json ./
 
-# Install Node dependencies (for Puppeteer & Node app)
+# Install Node deps
 RUN npm install
 
-# Copy remaining project files
+# Copy app files
 COPY . .
 
-# Puppeteer environment variables
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false
-
-# Expose port (Render expects this)
+# Expose port
 EXPOSE 10000
 
-RUN mkdir -p /data/chrome-profile && chmod -R 777 /data
-
-# Start server
+# Start app
 CMD ["npm", "start"]
