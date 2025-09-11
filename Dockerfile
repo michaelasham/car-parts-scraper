@@ -8,7 +8,9 @@ RUN apt-get update && apt-get install -y curl \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-
+# Install Playwright for Python
+RUN python3 -m pip install playwright && \
+    python3 -m playwright install chromium
 
 # Set working directory
 WORKDIR /app
