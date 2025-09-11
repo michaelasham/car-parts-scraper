@@ -1,12 +1,12 @@
 // server.js
-const express = require("express");
-const proxy = require("express-http-proxy");
+import express from "express";
+import proxy from "express-http-proxy";
 
 const PORT = 10000;
 
-require("./etkaScraper.js");
-require("./etkaVehicleInfo.js"); // This will launch the scraper server
-require("./bmw-scraper/realoem.js"); // This will launch the BMW scraper server
+import "./etkaScraper.js";
+import "./etkaVehicleInfo.js"; // This will launch the scraper server
+import "./bmw-scraper/realoem.js"; // This will launch the BMW scraper server
 
 const app = express();
 // Simple health check endpoint
