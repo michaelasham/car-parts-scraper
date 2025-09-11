@@ -119,7 +119,7 @@ app.post("/find-part", (req, res) => {
   }
 
   // Call the Python script with vin and part as arguments
-  const pythonProcess = spawn("python", [
+  const pythonProcess = spawn("python3", [
     path.join(__dirname, "bmw-scraper", "get_parts.py"),
     vin,
     part,
@@ -198,7 +198,7 @@ app.get("/:vin", (req, res, next) => {
   const vin = req.params.vin;
   if (/^[A-Z0-9]{5,17}$/.test(vin)) {
     // Forward to get-car-details endpoint
-    const pythonProcess = spawn("python", [
+    const pythonProcess = spawn("python3", [
       path.join(__dirname, "bmw-scraper", "get_car_details.py"),
       vin,
     ]);
