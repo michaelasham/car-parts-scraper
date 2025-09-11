@@ -4,9 +4,9 @@ const proxy = require("express-http-proxy");
 
 const PORT = 10000;
 
-import "./etkaScraper.js";
-import "./etkaVehicleInfo.js"; // This will launch the scraper server
-import "./bmw-scraper/realoem.js"; // This will launch the BMW scraper server
+require("./etkaScraper.js");
+require("./etkaVehicleInfo.js"); // This will launch the scraper server
+require("./bmw-scraper/realoem.js"); // This will launch the BMW scraper server
 
 const app = express();
 // Simple health check endpoint
