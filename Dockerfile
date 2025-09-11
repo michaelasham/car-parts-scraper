@@ -12,6 +12,9 @@ RUN apt-get update && apt-get install -y curl \
 RUN python3 -m pip install playwright && \
     python3 -m playwright install chromium
 
+
+RUN python3 -m pip install playwright-stealth
+
 # Set working directory
 WORKDIR /app
 

@@ -160,7 +160,7 @@ app.get("/get-car-details/:vin", (req, res) => {
   }
 
   // Call the Python script to get car details
-  const pythonProcess = spawn("python", [
+  const pythonProcess = spawn("python3", [
     path.join(__dirname, "bmw-scraper", "get_car_details.py"),
     vin,
   ]);
