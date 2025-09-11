@@ -12,7 +12,7 @@ def main():
     vin = sys.argv[1]
 
     with Stealth().use_sync(sync_playwright()) as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(headless=True,timeout=120000)
         page = browser.new_page()
         page.route("**/*", block_ads)
         page.goto("http://www.realoem.com")

@@ -75,7 +75,7 @@ async function scrapeSuperEtka(vin) {
   await page.click("#buttonVinSearch");
 
   await page.waitForSelector("div.modal-content.ui-draggable", {
-    timeout: 30000,
+    timeout: 120000,
   });
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -133,7 +133,7 @@ export async function scrapeVehicleInfo(vin) {
 
       console.log("⏱️ Waiting for vehicle info modal...");
       await page.waitForSelector("div.modal-content.ui-draggable", {
-        timeout: 30000,
+        timeout: 120000,
       });
       await new Promise((resolve) => setTimeout(resolve, 1000));
 

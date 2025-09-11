@@ -86,7 +86,7 @@ export async function scrapeSuperEtka(vin, partType) {
   await page.click("#buttonVinSearch");
 
   await page.waitForSelector("div.modal-content.ui-draggable", {
-    timeout: 30000,
+    timeout: 120000,
   });
   console.log("✅ VIN modal content appeared");
   await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -94,10 +94,10 @@ export async function scrapeSuperEtka(vin, partType) {
   console.log("✅ Pressed Escape to close VIN modal");
   await page.waitForSelector("div.modal-content.ui-draggable", {
     hidden: true,
-    timeout: 15000,
+    timeout: 120000,
   });
 
-  await page.waitForSelector(".etka_newImg_mainTable li", { timeout: 15000 });
+  await page.waitForSelector(".etka_newImg_mainTable li", { timeout: 120000 });
   await new Promise((resolve) => setTimeout(resolve, 2000));
 
   await page.evaluate(() => {
@@ -174,7 +174,7 @@ export async function scrapeSuperEtka(vin, partType) {
         document.querySelectorAll("table.detailsTable td.etkTd")
       ).some((td) => td.textContent.trim().toLowerCase().includes(partType));
     },
-    { timeout: 30000 },
+    { timeout: 120000 },
     partType
   );
 
