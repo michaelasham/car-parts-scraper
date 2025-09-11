@@ -35,7 +35,7 @@ let browser; // ✅ Global browser instance
 const app = express();
 app.use(express.json());
 
-async function initBrowser() {
+export async function initBrowser() {
   if (!browser) {
     browser = await puppeteer.launch({
       headless: true,

@@ -102,7 +102,7 @@ async function scrapeSuperEtka(vin) {
 
 export async function scrapeVehicleInfo(vin) {
   try {
-    const browserInstance = await initVehicleInfoBrowser();
+    const browserInstance = await initBrowser();
     const page = await browserInstance.newPage();
 
     try {

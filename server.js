@@ -4,7 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import dotenv from "dotenv";
-import { scrapeSuperEtka } from "./etkaScraper.js";
+import { scrapeSuperEtka, initBrowser } from "./etkaScraper.js";
 import { scrapeVehicleInfo } from "./etkaVehicleInfo.js";
 
 // Basic setup
