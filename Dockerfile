@@ -21,7 +21,7 @@ RUN npm install
 COPY . .
 
 # Expose port
-EXPOSE 5000 3000 3001
+EXPOSE 5000 3000 3001 10000
 
 # Start app
-CMD ["npm", "start"]
+CMD ["nodemon", "server.js"]
