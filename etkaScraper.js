@@ -53,7 +53,7 @@ async function initBrowser() {
   return browser;
 }
 
-async function scrapeSuperEtka(vin, partType) {
+export async function scrapeSuperEtka(vin, partType) {
   const singletonLockPath = "./tmp_profile_superetka/SingletonLock";
 
   if (fs.existsSync(singletonLockPath)) {

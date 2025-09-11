@@ -100,22 +100,68 @@ async function scrapeSuperEtka(vin) {
   return vehicleInfo;
 }
 
-app.post("/superetka/getVehicleInfo", async (req, res) => {
-  const { vin } = req.body;
-
-  if (!vin) {
-    return res.status(400).json({ success: false, error: "VIN is required." });
-  }
-
+export async function scrapeVehicleInfo(vin) {
   try {
-    const result = await Promise.race([
-      scrapeSuperEtka(vin),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Scraping Timeout")), 120000)
-      ),
-    ]);
+    const browserInstance = await initVehicleInfoBrowser();
+    const page = await browserInstance.newPage();
 
-    if (result && Object.keys(result).length > 0) {
+    try {
+      console.log(`🔍 Scraping vehicle info for VIN: ${vin}`);
+      await page.goto("https://superetka.com/etka", {
+        waitUntil: "networkidle0",
+      });
+
+      // Login if needed
+      if (await page.$('input[name="lgn"]')) {
+        console.log("🔐 Logging in to SuperETKA...");
+        await page.type('input[name="lgn"]', USERNAME);
+        await page.type('input[name="pwd"]', PASSWORD);
+        await Promise.all([
+          page.click('button[name="go"]'),
+          page.waitForNavigation({ waitUntil: "networkidle0" }),
+        ]);
+        console.log("✅ Login successful");
+      } else {
+        console.log("✅ Already logged in");
+      }
+
+      // Enter VIN
+      console.log("🔍 Entering VIN and searching...");
+      await page.waitForSelector("#vinSearch");
+      await page.type("#vinSearch", vin);
+      await page.click("#buttonVinSearch");
+
+      console.log("⏱️ Waiting for vehicle info modal...");
+      await page.waitForSelector("div.modal-content.ui-draggable", {
+        timeout: 30000,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      console.log("📊 Extracting vehicle information...");
+      const vehicleInfo = await page.evaluate(() => {
+        const table = document.querySelector("table.prTable0 tbody");
+        const result = {};
+
+        if (!table) return result;
+
+        for (const row of table.querySelectorAll("tr")) {
+          const cells = row.querySelectorAll("td");
+          if (cells.length === 2) {
+            const key = cells[0].innerText.trim();
+            const value = cells[1].innerText.trim();
+            result[key] = value;
+          }
+        }
+
+        return result;
+      });
+
+      console.log(
+        `✅ Found ${Object.keys(vehicleInfo).length} vehicle info properties`
+      );
+      await page.close();
+
+      // Normalize the keys for consistency
       const normalizeKeys = (obj) => {
         const formatted = {};
         for (const key in obj) {
@@ -128,23 +174,63 @@ app.post("/superetka/getVehicleInfo", async (req, res) => {
         return formatted;
       };
 
-      return res.json({
-        success: true,
-        vin,
-        vehicleInfo: normalizeKeys(result),
-      });
-    } else {
-      return res
-        .status(404)
-        .json({ success: false, message: "No vehicle details found." });
+      return normalizeKeys(vehicleInfo);
+    } catch (error) {
+      console.error(`❌ Error during vehicle info scraping: ${error.message}`);
+      await page.close();
+      throw error;
     }
-  } catch (err) {
-    console.error("❌ Scraper Error:", err.message);
-    return res
-      .status(500)
-      .json({ success: false, error: err.message || "Internal error" });
+  } catch (browserError) {
+    console.error(`❌ Browser error: ${browserError.message}`);
+    throw browserError;
   }
-});
+}
+
+// app.post("/superetka/getVehicleInfo", async (req, res) => {
+//   const { vin } = req.body;
+
+//   if (!vin) {
+//     return res.status(400).json({ success: false, error: "VIN is required." });
+//   }
+
+//   try {
+//     const result = await Promise.race([
+//       scrapeSuperEtka(vin),
+//       new Promise((_, reject) =>
+//         setTimeout(() => reject(new Error("Scraping Timeout")), 120000)
+//       ),
+//     ]);
+
+//     if (result && Object.keys(result).length > 0) {
+//       const normalizeKeys = (obj) => {
+//         const formatted = {};
+//         for (const key in obj) {
+//           const newKey = key
+//             .toLowerCase()
+//             .replace(/\s+/g, "_")
+//             .replace(/[^a-z0-9_]/g, "");
+//           formatted[newKey] = obj[key];
+//         }
+//         return formatted;
+//       };
+
+//       return res.json({
+//         success: true,
+//         vin,
+//         vehicleInfo: normalizeKeys(result),
+//       });
+//     } else {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "No vehicle details found." });
+//     }
+//   } catch (err) {
+//     console.error("❌ Scraper Error:", err.message);
+//     return res
+//       .status(500)
+//       .json({ success: false, error: err.message || "Internal error" });
+//   }
+// });
 
 const PORT = 3001;
 app.listen(PORT, async () => {

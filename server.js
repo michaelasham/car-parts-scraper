@@ -3,9 +3,9 @@ import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
-import puppeteer from "puppeteer-extra";
-import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import dotenv from "dotenv";
+import { scrapeSuperEtka } from "./etkaScraper.js";
+import { scrapeVehicleInfo } from "./etkaVehicleInfo.js";
 
 // Basic setup
 const __filename = fileURLToPath(import.meta.url);
@@ -16,28 +16,6 @@ dotenv.config();
 const PORT = process.env.PORT || 10000;
 const app = express();
 app.use(express.json());
-
-// Configure Puppeteer
-puppeteer.use(StealthPlugin());
-const USERNAME = process.env.ETKA_USER;
-const PASSWORD = process.env.ETKA_PASS;
-let etkaScraperBrowser; // For parts scraper
-let vehicleInfoBrowser; // For vehicle info scraper
-
-// Create separate profile directories
-const scraperProfileDir = path.join(__dirname, "tmp_profile_superetka_scraper");
-const vehicleProfileDir = path.join(__dirname, "tmp_profile_superetka_vehicle");
-
-// Ensure profile directories exist and clean lock files
-for (const dir of [scraperProfileDir, vehicleProfileDir]) {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  const lockFile = path.join(dir, "SingletonLock");
-  if (fs.existsSync(lockFile)) {
-    fs.unlinkSync(lockFile);
-  }
-}
 
 // Enhanced logging middleware
 app.use((req, res, next) => {
@@ -64,165 +42,6 @@ app.get("/", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
-
-// ====== BROWSER INITIALIZATION FUNCTIONS ======
-async function initEtkaScraperBrowser() {
-  if (!etkaScraperBrowser) {
-    etkaScraperBrowser = await puppeteer.launch({
-      headless: true,
-      userDataDir: scraperProfileDir,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-      ],
-    });
-    console.log("✅ ETKA Scraper browser initialized");
-  }
-  return etkaScraperBrowser;
-}
-
-async function initVehicleInfoBrowser() {
-  if (!vehicleInfoBrowser) {
-    vehicleInfoBrowser = await puppeteer.launch({
-      headless: true,
-      userDataDir: vehicleProfileDir,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-      ],
-    });
-    console.log("✅ Vehicle Info browser initialized");
-  }
-  return vehicleInfoBrowser;
-}
-
-// ====== ETKA SCRAPER CONTROLLER ======
-async function scrapeSuperEtka(vin, partType) {
-  const browserInstance = await initEtkaScraperBrowser();
-  const page = await browserInstance.newPage();
-
-  try {
-    await page.goto("https://superetka.com/etka", {
-      waitUntil: "networkidle0",
-    });
-
-    // Login if needed
-    if (await page.$('input[name="lgn"]')) {
-      await page.type('input[name="lgn"]', USERNAME);
-      await page.type('input[name="pwd"]', PASSWORD);
-      await Promise.all([
-        page.click('button[name="go"]'),
-        page.waitForNavigation({ waitUntil: "networkidle0" }),
-      ]);
-    }
-
-    // Enter VIN
-    await page.waitForSelector("#vinSearch");
-    await page.type("#vinSearch", vin);
-    await page.click("#buttonVinSearch");
-
-    await page.waitForSelector("div.modal-content.ui-draggable", {
-      timeout: 30000,
-    });
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    await page.keyboard.press("Escape");
-    await page.waitForSelector("div.modal-content.ui-draggable", {
-      hidden: true,
-      timeout: 15000,
-    });
-
-    // Click on Air conditioning category
-    await page.waitForSelector(".etka_newImg_mainTable li", { timeout: 15000 });
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    await page.evaluate(() => {
-      const items = Array.from(
-        document.querySelectorAll(".etka_newImg_mainTable li")
-      );
-      const acItem = items.find((el) =>
-        el.innerText.includes("Air cond. system")
-      );
-      if (acItem) acItem.click();
-    });
-
-    // The rest of your part scraping logic from etkaScraper.js
-    // ...including clicking on part type and extracting part number
-
-    // This is a simplified version - you should include your full logic from etkaScraper.js
-    const partInfo = await page.evaluate((partType) => {
-      // Your existing part evaluation logic here
-      // Return the part number found
-    }, partType);
-
-    await page.close();
-    return partInfo;
-  } catch (error) {
-    console.error(`❌ Error scraping part: ${error.message}`);
-    await page.close();
-    throw error;
-  }
-}
-
-// ====== VEHICLE INFO CONTROLLER ======
-async function scrapeVehicleInfo(vin) {
-  const browserInstance = await initVehicleInfoBrowser();
-  const page = await browserInstance.newPage();
-
-  try {
-    await page.goto("https://superetka.com/etka", {
-      waitUntil: "networkidle0",
-    });
-
-    // Login if needed
-    if (await page.$('input[name="lgn"]')) {
-      await page.type('input[name="lgn"]', USERNAME);
-      await page.type('input[name="pwd"]', PASSWORD);
-      await Promise.all([
-        page.click('button[name="go"]'),
-        page.waitForNavigation({ waitUntil: "networkidle0" }),
-      ]);
-    }
-
-    // Enter VIN
-    await page.waitForSelector("#vinSearch");
-    await page.type("#vinSearch", vin);
-    await page.click("#buttonVinSearch");
-
-    await page.waitForSelector("div.modal-content.ui-draggable", {
-      timeout: 30000,
-    });
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    const vehicleInfo = await page.evaluate(() => {
-      const table = document.querySelector("table.prTable0 tbody");
-      const result = {};
-
-      if (!table) return result;
-
-      for (const row of table.querySelectorAll("tr")) {
-        const cells = row.querySelectorAll("td");
-        if (cells.length === 2) {
-          const key = cells[0].innerText.trim();
-          const value = cells[1].innerText.trim();
-          result[key] = value;
-        }
-      }
-
-      return result;
-    });
-
-    await page.close();
-    return vehicleInfo;
-  } catch (error) {
-    console.error(`❌ Error scraping vehicle info: ${error.message}`);
-    await page.close();
-    throw error;
-  }
-}
 
 // ====== ENDPOINTS ======
 
@@ -274,22 +93,10 @@ app.post("/superetka/getVehicleInfo", async (req, res) => {
     ]);
 
     if (result && Object.keys(result).length > 0) {
-      const normalizeKeys = (obj) => {
-        const formatted = {};
-        for (const key in obj) {
-          const newKey = key
-            .toLowerCase()
-            .replace(/\s+/g, "_")
-            .replace(/[^a-z0-9_]/g, "");
-          formatted[newKey] = obj[key];
-        }
-        return formatted;
-      };
-
       return res.json({
         success: true,
         vin,
-        vehicleInfo: normalizeKeys(result),
+        vehicleInfo: result, // The result is already normalized in the imported function
       });
     } else {
       return res
@@ -435,21 +242,12 @@ app.use((req, res) => {
 });
 
 // Start server
-app.listen(PORT, "0.0.0.0", async () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`[SERVER] Server running on port ${PORT}`);
-
-  // Initialize browsers
-  await initEtkaScraperBrowser();
-  await initVehicleInfoBrowser();
 });
 
 // Handle shutdown gracefully
-process.on("SIGTERM", async () => {
+process.on("SIGTERM", () => {
   console.log("[SERVER] SIGTERM received, shutting down gracefully");
-
-  // Close browser instances
-  if (etkaScraperBrowser) await etkaScraperBrowser.close();
-  if (vehicleInfoBrowser) await vehicleInfoBrowser.close();
-
   process.exit(0);
 });
