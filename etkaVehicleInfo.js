@@ -147,7 +147,7 @@ app.post("/superetka/getVehicleInfo", async (req, res) => {
 });
 
 const PORT = 3001;
-app.listen(PORT, "0.0.0.0", async () => {
+app.listen(PORT, async () => {
   await initBrowser(); // ✅ Launch browser on startup
   console.log(`🚀 SuperETKA scraper listening on port ${PORT}`);
 });
