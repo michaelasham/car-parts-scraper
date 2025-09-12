@@ -13,7 +13,10 @@ def main():
 
     with Stealth().use_sync(sync_playwright()) as p:
         browser = p.chromium.launch(headless=True,timeout=30000)
-        page = browser.new_page()
+        context = browser.new_context()
+        context.set_default_timeout(60000)
+        context.set_default_navigation_timeout(60000)
+        page = context.new_page()
         page.route("**/*", block_ads)
         page.goto("http://www.realoem.com")
         page.wait_for_load_state('domcontentloaded')
