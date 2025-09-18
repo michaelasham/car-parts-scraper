@@ -233,6 +233,43 @@ app.get("/:vin", (req, res, next) => {
   }
 });
 
+//autodoc
+app.get("/autodoc/:part_number", (req, res) => {
+  const { part_number } = req.params;
+  if (!part_number) {
+    return res.status(400).json({ error: "part_number is required." });
+  }
+
+  const pythonProcess = spawn("python3", [
+    path.join(__dirname, "autodoc", "autodoc.py"),
+    part_number,
+  ]);
+
+  let output = "";
+  let error = "";
+
+  pythonProcess.stdout.on("data", (data) => {
+    output += data.toString();
+  });
+  pythonProcess.stderr.on("data", (data) => {
+    error += data.toString();
+  });
+
+  pythonProcess.on("close", (code) => {
+    if (code !== 0) {
+      return res.status(500).json({ error: error || "Python script error." });
+    }
+    try {
+      const resultObj = JSON.parse(output.trim());
+      res.json(resultObj);
+    } catch (e) {
+      res.status(500).json({
+        error: "Invalid JSON from Python script.",
+        details: output.trim(),
+      });
+    }
+  });
+});
 // 404 Handler
 app.use((req, res) => {
   res.status(404).json({
