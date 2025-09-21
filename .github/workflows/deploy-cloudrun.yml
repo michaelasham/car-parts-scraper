@@ -1,0 +1,51 @@
+name: Build & Deploy to Cloud Run (WIF)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  GCP_PROJECT: autoscraper-472602
+  GCP_REGION: europe-west3
+  SERVICE_NAME: scraper-service
+  IMAGE: gcr.io/autoscraper-472602/scraper
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - id: 'auth'
+        name: Authenticate to GCP using Workload Identity Federation
+        uses: 'google-github-actions/auth@v1'
+        with:
+          workload_identity_provider: 'projects/207722784991/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'gha-deployer@autoscraper-472602.iam.gserviceaccount.com'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT }}
+
+      - name: Build container (Cloud Build)
+        run: |
+          gcloud builds submit --tag ${IMAGE}:${{ github.sha }}
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image=${IMAGE}:${{ github.sha }} \
+            --region=${{ env.GCP_REGION }} \
+            --platform=managed \
+            --allow-unauthenticated \
+            --concurrency=1 \
+            --memory=2Gi \
+            --timeout=900
