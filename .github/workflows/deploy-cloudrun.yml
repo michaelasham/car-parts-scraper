@@ -37,12 +37,62 @@ jobs:
         with:
           project_id: ${{ env.GCP_PROJECT }}
 
-      - name: Build container with Cloud Build
+      # --- ASYNC BUILD: start build without attempting to stream logs ---
+      - id: start_build
+        name: Start Cloud Build (async)
         run: |
-          gcloud builds submit --tag "${IMAGE}:${{ github.sha }}"
+          set -euo pipefail
+          echo "Starting async Cloud Build..."
+          # start build asynchronously and print the build id
+          BUILD_ID=$(gcloud builds submit \
+            --tag "${IMAGE}:${{ github.sha }}" \
+            --async \
+            --project="${{ env.GCP_PROJECT }}" \
+            --format='value(id)')
+          echo "Started build: $BUILD_ID"
+          # export to GitHub Actions outputs
+          echo "BUILD_ID=$BUILD_ID" >> $GITHUB_OUTPUT
+
+      # --- POLL: wait for build to finish (no log streaming required) ---
+      - name: Wait for Cloud Build to finish
+        env:
+          PROJECT_ID: ${{ env.GCP_PROJECT }}
+        run: |
+          set -euo pipefail
+          BUILD_ID="${{ steps.start_build.outputs.BUILD_ID }}"
+          echo "Polling build status for: ${BUILD_ID}"
+          # Give a reasonable timeout (180*5s = 15 minutes). Adjust if you need longer.
+          MAX_TRIES=180
+          SLEEP=5
+          for i in $(seq 1 $MAX_TRIES); do
+            STATUS=$(gcloud builds describe "$BUILD_ID" \
+              --project="$PROJECT_ID" \
+              --format='value(status)' || echo "UNKNOWN")
+            echo "[$i] Build status: $STATUS"
+            case "$STATUS" in
+              SUCCESS)
+                echo "Build succeeded."
+                exit 0
+                ;;
+              FAILURE|INTERNAL_ERROR|TIMEOUT|CANCELLED)
+                echo "Build finished with status: $STATUS"
+                # Print the logs URL to help debugging
+                echo "Cloud Build logs: https://console.cloud.google.com/cloud-build/builds/${BUILD_ID}?project=${PROJECT_ID}"
+                exit 1
+                ;;
+              *)
+                # still working (QUEUED, WORKING, or UNKNOWN), wait and poll again
+                sleep $SLEEP
+                ;;
+            esac
+          done
+          echo "Timed out waiting for Cloud Build to finish after $(( MAX_TRIES * SLEEP )) seconds."
+          echo "Check logs: https://console.cloud.google.com/cloud-build/builds/${BUILD_ID}?project=${PROJECT_ID}"
+          exit 1
 
       - name: Deploy to Cloud Run
         run: |
+          # once build is successful, deploy the image that was pushed
           gcloud run deploy "${{ env.SERVICE_NAME }}" \
             --image="${IMAGE}:${{ github.sha }}" \
             --region="${{ env.GCP_REGION }}" \
@@ -50,4 +100,5 @@ jobs:
             --allow-unauthenticated \
             --concurrency=1 \
             --memory=2Gi \
-            --timeout=900
+            --timeout=900 \
+            --project="${{ env.GCP_PROJECT }}"
