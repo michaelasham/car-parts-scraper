@@ -24,7 +24,7 @@ def main():
         details = actions.get_car_details(vin)
         import json
         print(json.dumps(details, ensure_ascii=False))
-        #browser.close()
+        browser.close()
 
 if __name__ == "__main__":
     main()

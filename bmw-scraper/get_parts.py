@@ -24,7 +24,7 @@ def main():
         result = actions.find_ac_part_by_keyword(vin, part)
         import json
         print(json.dumps(result, ensure_ascii=False))
-        #browser.close()
+        browser.close()
 
 if __name__ == "__main__":
     main()

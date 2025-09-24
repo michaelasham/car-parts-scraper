@@ -6,6 +6,7 @@ import fs from "fs";
 import dotenv from "dotenv";
 import { scrapeSuperEtka, initBrowser } from "./etkaScraper.js";
 import { scrapeVehicleInfo } from "./etkaVehicleInfo.js";
+import axios from "axios";
 
 // Basic setup
 const __filename = fileURLToPath(import.meta.url);
@@ -234,7 +235,7 @@ app.get("/:vin", (req, res, next) => {
 });
 
 //autodoc
-app.get("/autodoc/:part_number", (req, res) => {
+app.get("/autodoc/:part_number/", async (req, res) => {
   const { part_number } = req.params;
   if (!part_number) {
     return res.status(400).json({ error: "part_number is required." });
@@ -255,13 +256,35 @@ app.get("/autodoc/:part_number", (req, res) => {
     error += data.toString();
   });
 
-  pythonProcess.on("close", (code) => {
+  pythonProcess.on("close", async (code) => {
     if (code !== 0) {
       return res.status(500).json({ error: error || "Python script error." });
     }
     try {
       const resultObj = JSON.parse(output.trim());
-      res.json(resultObj);
+
+      // Check if there's an image URL in the result
+      if (!resultObj.image) {
+        return res.status(404).json({ error: "No image found for this part" });
+      }
+
+      try {
+        // Get the image from the URL
+        const imageResponse = await axios.get(resultObj.image, {
+          responseType: "arraybuffer",
+        });
+
+        // Set proper headers and return the image
+        const contentType =
+          imageResponse.headers["content-type"] || "image/jpeg";
+        res.set("Content-Type", contentType);
+        return res.send(Buffer.from(imageResponse.data));
+      } catch (imageError) {
+        return res.status(500).json({
+          error: "Failed to fetch image",
+          details: imageError.message,
+        });
+      }
     } catch (e) {
       res.status(500).json({
         error: "Invalid JSON from Python script.",
