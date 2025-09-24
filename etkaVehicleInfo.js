@@ -118,10 +118,12 @@ export async function scrapeVehicleInfo(vin) {
         console.log("🔐 Logging in to SuperETKA...");
         await page.type('input[name="lgn"]', USERNAME);
         await page.type('input[name="pwd"]', PASSWORD);
-        await Promise.all([
-          page.click('button[name="go"]'),
-          page.waitForNavigation({ waitUntil: "networkidle0" }),
-        ]);
+        // await Promise.all([
+        //   page.click('button[name="go"]'),
+        //   page.waitForNavigation({ waitUntil: "networkidle0" }),
+        // ]);
+        await page.click('button[name="go"]');
+        await page.waitForNavigation({ waitUntil: "networkidle0" });
         console.log("✅ Login successful");
       } else {
         console.log("✅ Already logged in");

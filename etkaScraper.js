@@ -84,10 +84,12 @@ export async function scrapeSuperEtka(vin, partType) {
     console.log("🔐 Not logged in. Logging in...");
     await page.type('input[name="lgn"]', USERNAME);
     await page.type('input[name="pwd"]', PASSWORD);
-    await Promise.all([
-      page.click('button[name="go"]'),
-      page.waitForNavigation({ waitUntil: "domcontentloaded" }),
-    ]);
+    // await Promise.all([
+    //   page.click('button[name="go"]'),
+    //   page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+    // ]);
+    await page.click('button[name="go"]');
+    await page.waitForNavigation({ waitUntil: "networkidle0" });
     console.log("✅ Logged in successfully.");
   } else {
     console.log("✅ Already logged in.");
