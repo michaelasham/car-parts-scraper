@@ -54,7 +54,7 @@ def main():
                 parsed_oe_numbers.append(match.group(1))
                 
         result = {
-           " oe_numbers": parsed_oe_numbers,
+           "oe_numbers": parsed_oe_numbers,
             "image": image_url
         }
 
