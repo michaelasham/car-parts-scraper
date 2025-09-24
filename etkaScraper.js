@@ -37,18 +37,30 @@ app.use(express.json());
 
 export async function initBrowser() {
   if (!browser) {
+    console.log("🚀 Launching browser...");
     browser = await puppeteer.launch({
-      headless: true,
-      userDataDir: profileDir, // ✅ Persistent session
+      headless: "new",
+      userDataDir: profileDir,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--disable-software-rasterizer",
+        "--disable-web-security",
+        "--disable-features=IsolateOrigins,site-per-process",
+        "--disable-site-isolation-trials",
+        "--disable-features=BlockInsecurePrivateNetworkRequests",
+        "--disable-features=BlockInsecurePrivateNetworkRequestsFromPrivate",
+        "--disable-blink-features=AutomationControlled",
+        "--ignore-certificate-errors",
       ],
+      ignoreHTTPSErrors: true,
     });
-    console.log("✅ Puppeteer launched with persistent session");
+
+    console.log("✅ Browser launched successfully");
+
+    // Set up browser close on process exit
+    process.on("exit", () => {
+      if (browser) browser.close();
+    });
   }
   return browser;
 }

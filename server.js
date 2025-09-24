@@ -18,6 +18,26 @@ const PORT = process.env.PORT || 10000;
 const app = express();
 app.use(express.json());
 
+// Accept JSON, URL-encoded, and raw text (e.g., Postman "Text" tab)
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+app.use(
+  express.text({ type: ["text/*", "application/octet-stream"], limit: "1mb" })
+);
+
+// If body came in as text, but looks like JSON, parse it.
+app.use((req, _res, next) => {
+  if (typeof req.body === "string") {
+    try {
+      const maybe = JSON.parse(req.body);
+      if (maybe && typeof maybe === "object") req.body = maybe;
+    } catch {
+      // leave as string; routes will validate and 400 gracefully
+    }
+  }
+  next();
+});
+
 // Enhanced logging middleware
 app.use((req, res, next) => {
   const reqId = Math.random().toString(36).substring(2, 8);
@@ -54,6 +74,12 @@ app.post("/superetka/scrape", async (req, res) => {
     return res.status(400).json({ error: "vin and part are required." });
   }
 
+  if (typeof vin !== "string" || typeof part !== "string") {
+    return res.status(400).json({
+      error: "vin and part (strings) are required in JSON body",
+      example: { vin: "WBA...", part: "compressor" },
+    });
+  }
   try {
     const result = await Promise.race([
       scrapeSuperEtka(vin, part.toLowerCase()),
@@ -85,6 +111,12 @@ app.post("/superetka/getVehicleInfo", async (req, res) => {
     return res.status(400).json({ success: false, error: "VIN is required." });
   }
 
+  if (typeof vin !== "string") {
+    return res.status(400).json({
+      error: "vin (string) is required in JSON body",
+      example: { vin: "WBA..." },
+    });
+  }
   try {
     const result = await Promise.race([
       scrapeVehicleInfo(vin),
