@@ -51,6 +51,7 @@ export async function initBrowser() {
         "--disable-features=BlockInsecurePrivateNetworkRequestsFromPrivate",
         "--disable-blink-features=AutomationControlled",
         "--ignore-certificate-errors",
+        "--disable-dev-shm-usage",
       ],
       ignoreHTTPSErrors: true,
     });

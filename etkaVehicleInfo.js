@@ -181,7 +181,7 @@ export async function scrapeVehicleInfo(vin) {
       return normalizeKeys(vehicleInfo);
     } catch (error) {
       console.error(`❌ Error during vehicle info scraping: ${error.message}`);
-      console.error("❌ Scraper Error:", err?.stack || err);
+      console.error("❌ Scraper Error:", error?.stack || error);
       await page.close();
       throw error;
     }
