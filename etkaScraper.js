@@ -301,6 +301,7 @@ app.post("/superetka/scrape", async (req, res) => {
     }
   } catch (err) {
     console.error("❌ Scraper Error:", err.message);
+    console.error("❌ Scraper Error:", err?.stack || err);
     return res
       .status(500)
       .json({ success: false, error: err.message || "Internal error" });
