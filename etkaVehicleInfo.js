@@ -186,54 +186,54 @@ export async function scrapeVehicleInfo(vin) {
   }
 }
 
-// app.post("/superetka/getVehicleInfo", async (req, res) => {
-//   const { vin } = req.body;
+app.post("/superetka/getVehicleInfo", async (req, res) => {
+  const { vin } = req.body;
 
-//   if (!vin) {
-//     return res.status(400).json({ success: false, error: "VIN is required." });
-//   }
+  if (!vin) {
+    return res.status(400).json({ success: false, error: "VIN is required." });
+  }
 
-//   try {
-//     const result = await Promise.race([
-//       scrapeSuperEtka(vin),
-//       new Promise((_, reject) =>
-//         setTimeout(() => reject(new Error("Scraping Timeout")), 120000)
-//       ),
-//     ]);
+  try {
+    const result = await Promise.race([
+      scrapeSuperEtka(vin),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Scraping Timeout")), 120000)
+      ),
+    ]);
 
-//     if (result && Object.keys(result).length > 0) {
-//       const normalizeKeys = (obj) => {
-//         const formatted = {};
-//         for (const key in obj) {
-//           const newKey = key
-//             .toLowerCase()
-//             .replace(/\s+/g, "_")
-//             .replace(/[^a-z0-9_]/g, "");
-//           formatted[newKey] = obj[key];
-//         }
-//         return formatted;
-//       };
+    if (result && Object.keys(result).length > 0) {
+      const normalizeKeys = (obj) => {
+        const formatted = {};
+        for (const key in obj) {
+          const newKey = key
+            .toLowerCase()
+            .replace(/\s+/g, "_")
+            .replace(/[^a-z0-9_]/g, "");
+          formatted[newKey] = obj[key];
+        }
+        return formatted;
+      };
 
-//       return res.json({
-//         success: true,
-//         vin,
-//         vehicleInfo: normalizeKeys(result),
-//       });
-//     } else {
-//       return res
-//         .status(404)
-//         .json({ success: false, message: "No vehicle details found." });
-//     }
-//   } catch (err) {
-//     console.error("❌ Scraper Error:", err.message);
-//     return res
-//       .status(500)
-//       .json({ success: false, error: err.message || "Internal error" });
-//   }
-// });
-
-const PORT = 3001;
-app.listen(PORT, async () => {
-  await initBrowser(); // ✅ Launch browser on startup
-  console.log(`🚀 SuperETKA scraper listening on port ${PORT}`);
+      return res.json({
+        success: true,
+        vin,
+        vehicleInfo: normalizeKeys(result),
+      });
+    } else {
+      return res
+        .status(404)
+        .json({ success: false, message: "No vehicle details found." });
+    }
+  } catch (err) {
+    console.error("❌ Scraper Error:", err.message);
+    return res
+      .status(500)
+      .json({ success: false, error: err.message || "Internal error" });
+  }
 });
+
+// const PORT = 3001;
+// app.listen(PORT, async () => {
+//   await initBrowser(); // ✅ Launch browser on startup
+//   console.log(`🚀 SuperETKA scraper listening on port ${PORT}`);
+// });

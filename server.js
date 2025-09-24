@@ -279,7 +279,8 @@ app.use((req, res) => {
 });
 
 // Start server
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, "0.0.0.0", async () => {
+  await initBrowser();
   console.log(`[SERVER] Server running on port ${PORT}`);
 });
 
