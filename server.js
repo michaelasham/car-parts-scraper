@@ -237,6 +237,8 @@ app.get("/:vin", (req, res, next) => {
 //autodoc
 app.get("/autodoc/:part_number/", async (req, res) => {
   const { part_number } = req.params;
+  const format = req.query.format || "json"; // Default to JSON if not specified
+
   if (!part_number) {
     return res.status(400).json({ error: "part_number is required." });
   }
@@ -263,27 +265,37 @@ app.get("/autodoc/:part_number/", async (req, res) => {
     try {
       const resultObj = JSON.parse(output.trim());
 
-      // Check if there's an image URL in the result
-      if (!resultObj.image) {
-        return res.status(404).json({ error: "No image found for this part" });
+      // Return JSON with OE numbers and image URL
+      if (format === "json") {
+        return res.json({
+          success: true,
+          oe_numbers: resultObj.oe_numbers || [],
+          image_url: resultObj.image || null,
+        });
       }
 
-      try {
-        // Get the image from the URL
-        const imageResponse = await axios.get(resultObj.image, {
-          responseType: "arraybuffer",
-        });
+      // Return image directly
+      if (format === "image") {
+        if (!resultObj.image) {
+          return res
+            .status(404)
+            .json({ error: "No image found for this part" });
+        }
 
-        // Set proper headers and return the image
-        const contentType =
-          imageResponse.headers["content-type"] || "image/jpeg";
-        res.set("Content-Type", contentType);
-        return res.send(Buffer.from(imageResponse.data));
-      } catch (imageError) {
-        return res.status(500).json({
-          error: "Failed to fetch image",
-          details: imageError.message,
-        });
+        try {
+          const imageResponse = await axios.get(resultObj.image, {
+            responseType: "arraybuffer",
+          });
+          const contentType =
+            imageResponse.headers["content-type"] || "image/jpeg";
+          res.set("Content-Type", contentType);
+          return res.send(Buffer.from(imageResponse.data));
+        } catch (imageError) {
+          return res.status(500).json({
+            error: "Failed to fetch image",
+            details: imageError.message,
+          });
+        }
       }
     } catch (e) {
       res.status(500).json({
