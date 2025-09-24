@@ -74,10 +74,10 @@ export async function scrapeSuperEtka(vin, partType) {
 
   const browserInstance = await initBrowser();
   const page = await browserInstance.newPage();
-  await page.setUserAgent(
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-  );
-  await page.goto("https://superetka.com/etka", { waitUntil: "networkidle0" });
+
+  await page.goto("https://superetka.com/etka", {
+    waitUntil: "domcontentloaded",
+  });
 
   // Only login if needed
   if (await page.$('input[name="lgn"]')) {
@@ -86,7 +86,7 @@ export async function scrapeSuperEtka(vin, partType) {
     await page.type('input[name="pwd"]', PASSWORD);
     await Promise.all([
       page.click('button[name="go"]'),
-      page.waitForNavigation({ waitUntil: "networkidle0" }),
+      page.waitForNavigation({ waitUntil: "domcontentloaded" }),
     ]);
     console.log("✅ Logged in successfully.");
   } else {

@@ -38,7 +38,7 @@ app.use(express.json());
 async function initBrowser() {
   if (!browser) {
     browser = await puppeteer.launch({
-      headless: true,
+      headless: "new",
       userDataDir: profileDir, // ✅ Persistent session
       args: [
         "--no-sandbox",
@@ -57,7 +57,9 @@ async function scrapeSuperEtka(vin) {
   const browserInstance = await initBrowser();
   const page = await browserInstance.newPage();
 
-  await page.goto("https://superetka.com/etka", { waitUntil: "networkidle0" });
+  await page.goto("https://superetka.com/etka", {
+    waitUntil: "domcontentloaded",
+  });
 
   // Login if needed
   if (await page.$('input[name="lgn"]')) {
@@ -65,7 +67,7 @@ async function scrapeSuperEtka(vin) {
     await page.type('input[name="pwd"]', PASSWORD);
     await Promise.all([
       page.click('button[name="go"]'),
-      page.waitForNavigation({ waitUntil: "networkidle0" }),
+      page.waitForNavigation({ waitUntil: "domcontentloaded" }),
     ]);
   }
 
@@ -104,9 +106,7 @@ export async function scrapeVehicleInfo(vin) {
   try {
     const browserInstance = await initBrowser();
     const page = await browserInstance.newPage();
-    await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    );
+
     try {
       console.log(`🔍 Scraping vehicle info for VIN: ${vin}`);
       await page.goto("https://superetka.com/etka", {
