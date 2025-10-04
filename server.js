@@ -359,13 +359,6 @@ app.post("/mercedes/find-part", (req, res) => {
     }
   });
 });
-// 404 Handler
-app.use((req, res) => {
-  res.status(404).json({
-    error: "Not Found",
-    message: `No handler for ${req.method} ${req.url}`,
-  });
-});
 
 app.get("/mercedes/get-car-details/:vin", (req, res) => {
   const { vin } = req.params;
@@ -404,6 +397,14 @@ app.get("/mercedes/get-car-details/:vin", (req, res) => {
         details: output.trim(),
       });
     }
+  });
+});
+
+// 404 Handler
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Not Found",
+    message: `No handler for ${req.method} ${req.url}`,
   });
 });
 
