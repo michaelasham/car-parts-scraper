@@ -75,7 +75,7 @@ app.get("/superetka/get-car-details/:vin", (req, res) => {
 
   // Call the Python script to get car details
   const pythonProcess = spawn("python3", [
-    path.join(__dirname, "etka", "get_car_details.py"),
+    path.join(__dirname, "etka", "get_vehicle_data.py"),
     vin,
   ]);
 
