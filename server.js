@@ -178,7 +178,7 @@ app.post("/realoem/find-part", (req, res) => {
 
   // Call the Python script with vin and part as arguments
   const pythonProcess = spawn("python3", [
-    path.join(__dirname, "bmw-scraper", "get_ac_parts.py"),
+    path.join(__dirname, "bmw-scraper", selected_operation),
     vin,
     part,
   ]);
