@@ -66,84 +66,87 @@ app.get("/", (req, res) => {
 
 // ====== ENDPOINTS ======
 
-// ETKA Scraper endpoint
-app.post("/superetka/scrape", async (req, res) => {
-  const { vin, part } = req.body;
+// etka Scraper - Get Car Details
+app.get("/superetka/get-car-details/:vin", (req, res) => {
+  const { vin } = req.params;
+  if (!vin) {
+    return res.status(400).json({ error: "VIN is required." });
+  }
 
+  // Call the Python script to get car details
+  const pythonProcess = spawn("python3", [
+    path.join(__dirname, "etka", "get_car_details.py"),
+    vin,
+  ]);
+
+  pythonProcess.stdout.setEncoding("utf8");
+  let output = "";
+  let error = "";
+
+  pythonProcess.stdout.on("data", (data) => {
+    output += data.toString();
+  });
+
+  pythonProcess.stderr.on("data", (data) => {
+    error += data.toString();
+  });
+
+  pythonProcess.on("close", (code) => {
+    if (code !== 0) {
+      return res.status(500).json({ error: error || "Python script error." });
+    }
+    try {
+      const resultObj = JSON.parse(output.trim());
+      res.json(resultObj);
+    } catch (e) {
+      res.status(500).json({
+        error: "Invalid JSON from Python script.",
+        details: output.trim(),
+      });
+    }
+  });
+});
+
+// etka Scraper - Find Part
+app.post("/superetka/find-part", (req, res) => {
+  const { vin, part } = req.body;
   if (!vin || !part) {
     return res.status(400).json({ error: "vin and part are required." });
   }
 
-  if (typeof vin !== "string" || typeof part !== "string") {
-    return res.status(400).json({
-      error: "vin and part (strings) are required in JSON body",
-      example: { vin: "WBA...", part: "compressor" },
-    });
-  }
-  try {
-    const result = await Promise.race([
-      scrapeSuperEtka(vin, part.toLowerCase()),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Scraping Timeout")), 120000)
-      ),
-    ]);
+  // Call the Python script with vin and part as arguments
+  const pythonProcess = spawn("python3", [
+    path.join(__dirname, "etka", "get_ac_parts.py"),
+    vin,
+    part,
+  ]);
 
-    if (result) {
-      return res.json({ success: true, part: result });
-    } else {
-      return res
-        .status(404)
-        .json({ success: false, message: "Part not found" });
+  let output = "";
+  let error = "";
+
+  pythonProcess.stdout.on("data", (data) => {
+    output += data.toString();
+  });
+
+  pythonProcess.stderr.on("data", (data) => {
+    error += data.toString();
+  });
+
+  pythonProcess.on("close", (code) => {
+    if (code !== 0) {
+      return res.status(500).json({ error: error || "Python script error." });
     }
-  } catch (err) {
-    console.error("❌ Scraper Error:", err.message);
-    return res
-      .status(500)
-      .json({ success: false, error: err.message || "Internal error" });
-  }
-});
-
-// Vehicle Info endpoint
-app.post("/superetka/getVehicleInfo", async (req, res) => {
-  const { vin } = req.body;
-
-  if (!vin) {
-    return res.status(400).json({ success: false, error: "VIN is required." });
-  }
-
-  if (typeof vin !== "string") {
-    return res.status(400).json({
-      error: "vin (string) is required in JSON body",
-      example: { vin: "WBA..." },
-    });
-  }
-  try {
-    const result = await Promise.race([
-      scrapeVehicleInfo(vin),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Scraping Timeout")), 120000)
-      ),
-    ]);
-
-    if (result && Object.keys(result).length > 0) {
-      return res.json({
-        success: true,
-        vin,
-        vehicleInfo: result, // The result is already normalized in the imported function
+    try {
+      const resultObj = JSON.parse(output.trim());
+      res.json(resultObj);
+    } catch (e) {
+      res.status(500).json({
+        error: "Invalid JSON from Python script.",
+        details: output.trim(),
       });
-    } else {
-      return res
-        .status(404)
-        .json({ success: false, message: "No vehicle details found." });
     }
-  } catch (err) {
-    console.error("❌ Scraper Error:", err.message);
-    return res
-      .status(500)
-      .json({ success: false, error: err.message || "Internal error" });
-  }
+  });
 });
-
 // BMW Scraper - Find Part
 app.post("/realoem/find-part", (req, res) => {
   const { vin, part } = req.body;
