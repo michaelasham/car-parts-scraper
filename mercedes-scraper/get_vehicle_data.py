@@ -6,6 +6,48 @@ import json
 import os
 
 
+def escape_in_string_literals(loose_json: str) -> str:
+    out = []
+    in_string = False
+    escaping = False
+
+    for ch in loose_json:
+        if not in_string:
+            if ch == '"':
+                in_string = True
+            out.append(ch)
+            continue
+
+        # inside a string
+        if escaping:
+            out.append(ch)
+            escaping = False
+            continue
+
+        if ch == '\\':
+            out.append(ch)
+            escaping = True
+            continue
+
+        if ch == '\n':
+            out.append('\\n'); continue
+        if ch == '\r':
+            out.append('\\r'); continue
+        if ch == '\t':
+            out.append('\\t'); continue
+
+        out.append(ch)
+        if ch == '"':
+            in_string = False
+
+    return ''.join(out)
+
+def parse_loose_json(loose_json: str):
+    try:
+        return json.loads(loose_json)
+    except json.JSONDecodeError:
+        fixed = escape_in_string_literals(loose_json)
+        return json.loads(fixed)
 
 
 def main():
@@ -45,7 +87,9 @@ def main():
             except:
                 div_counter+=1
                 pass
+            
     
-        print(json.dumps(car_data,indent=1).replace("\\n","\n"))
+        result = parse_loose_json(json.dumps(car_data,indent=3).replace("\\n","\n"))
+        print(result)
 if __name__ == "__main__":
     main()
