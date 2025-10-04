@@ -1,6 +1,7 @@
 from operator_layer.general_operator import GeneralOperator
 from operator_layer.ac_operator import ACOperator
 from playwright.sync_api import Page
+from operator_layer.quick_service_operator import QuickServiceOperator
 
 AC_KEYWORD_MAP = {
     "evaporator": "evaporator_expansion_valve",
@@ -23,6 +24,7 @@ class Actions:
     def __init__(self, page):
         self.general = GeneralOperator(page)
         self.ac = ACOperator(page)
+        self.quick = QuickServiceOperator(page)
 
     def find_ac_part_by_keyword(self, vin: str, keyword: str):
         section = AC_KEYWORD_MAP.get(keyword.lower())
@@ -56,8 +58,9 @@ class Actions:
                 if keyword.lower() == "compressor":
                     if "oil" in description or "bracket" in description:
                         continue
-                if keyword.lower() in description and "discontinued" not in notes:
+                if keyword.lower() in description and "ENDED" not in notes:
                     part_number_link = tds.nth(6).locator("a.inline-a")
+                    part_number_link.wait_for(state="attached")
                     if part_number_link.count() > 0:
                         part_number = part_number_link.inner_text().strip()
                         part_numbers.append(part_number)
@@ -71,3 +74,13 @@ class Actions:
         self.general.enter_vin(vin)
         self.general.click_first_search()
         return self.general.get_car_details()
+    
+    def find_service_part_by_keyword(self, vin: str, keyword:str):
+        self.general.dismiss_adblock()
+        self.general.click_bmw_catalog()
+        self.general.enter_vin(vin)
+        self.general.click_first_search()
+        self.general.click_browse_parts()
+        self.general.click_quick_service_parts()
+        self.quick.click_oil_maintenance()
+        return self.quick.filter_quick_service_table(keyword)

@@ -145,15 +145,37 @@ app.post("/superetka/getVehicleInfo", async (req, res) => {
 });
 
 // BMW Scraper - Find Part
-app.post("/find-part", (req, res) => {
+app.post("/realoem/find-part", (req, res) => {
   const { vin, part } = req.body;
   if (!vin || !part) {
     return res.status(400).json({ error: "vin and part are required." });
   }
 
+  const ac_keywords = [
+    "compressor",
+    "evaporator",
+    "compressor bracket",
+    "expansion valve",
+  ];
+  const quick_service_keywords = ["oil-filter", "air filter", "spark plugs"];
+  let selected_operation = "";
+  try {
+    if (ac_keywords.includes(part)) {
+      selected_operation = "get_ac_parts.py";
+    } else if (quick_service_keywords.includes(part)) {
+      selected_operation = "get_maintenance_parts.py";
+    } else {
+      throw new Error("Unsupported Keyword!");
+    }
+  } catch (e) {
+    res.status(500).json({
+      error: "Unsupported Keyword",
+    });
+  }
+
   // Call the Python script with vin and part as arguments
   const pythonProcess = spawn("python3", [
-    path.join(__dirname, "bmw-scraper", "get_parts.py"),
+    path.join(__dirname, "bmw-scraper", "get_ac_parts.py"),
     vin,
     part,
   ]);
@@ -186,7 +208,7 @@ app.post("/find-part", (req, res) => {
 });
 
 // BMW Scraper - Get Car Details
-app.get("/get-car-details/:vin", (req, res) => {
+app.get("/realoem/get-car-details/:vin", (req, res) => {
   const { vin } = req.params;
   if (!vin) {
     return res.status(400).json({ error: "VIN is required." });
@@ -224,46 +246,6 @@ app.get("/get-car-details/:vin", (req, res) => {
       });
     }
   });
-});
-
-// Support direct VIN access
-app.get("/:vin", (req, res, next) => {
-  const vin = req.params.vin;
-  if (/^[A-Z0-9]{5,17}$/.test(vin)) {
-    // Forward to get-car-details endpoint
-    const pythonProcess = spawn("python3", [
-      path.join(__dirname, "bmw-scraper", "get_car_details.py"),
-      vin,
-    ]);
-
-    let output = "";
-    let error = "";
-
-    pythonProcess.stdout.on("data", (data) => {
-      output += data.toString();
-    });
-
-    pythonProcess.stderr.on("data", (data) => {
-      error += data.toString();
-    });
-
-    pythonProcess.on("close", (code) => {
-      if (code !== 0) {
-        return res.status(500).json({ error: error || "Python script error." });
-      }
-      try {
-        const resultObj = JSON.parse(output.trim());
-        res.json(resultObj);
-      } catch (e) {
-        res.status(500).json({
-          error: "Invalid JSON from Python script.",
-          details: output.trim(),
-        });
-      }
-    });
-  } else {
-    next();
-  }
 });
 
 //autodoc
@@ -337,11 +319,91 @@ app.get("/autodoc/:part_number/", async (req, res) => {
     }
   });
 });
+
+app.post("/mercedes/find-part", (req, res) => {
+  const { vin, part } = req.body;
+  if (!vin || !part) {
+    return res.status(400).json({ error: "vin and part are required." });
+  }
+
+  // Call the Python script with vin and part as arguments
+  const pythonProcess = spawn("python3", [
+    path.join(__dirname, "mercedes-scraper", "get_ac_parts.py"),
+    vin,
+    part,
+  ]);
+
+  let output = "";
+  let error = "";
+
+  pythonProcess.stdout.on("data", (data) => {
+    output += data.toString();
+  });
+
+  pythonProcess.stderr.on("data", (data) => {
+    error += data.toString();
+  });
+
+  pythonProcess.on("close", (code) => {
+    if (code !== 0) {
+      return res.status(500).json({ error: error || "Python script error." });
+    }
+    try {
+      const resultObj = JSON.parse(output.trim());
+      res.json(resultObj);
+    } catch (e) {
+      res.status(500).json({
+        error: "Invalid JSON from Python script.",
+        details: output.trim(),
+      });
+    }
+  });
+});
 // 404 Handler
 app.use((req, res) => {
   res.status(404).json({
     error: "Not Found",
     message: `No handler for ${req.method} ${req.url}`,
+  });
+});
+
+app.get("/mercedes/get-car-details/:vin", (req, res) => {
+  const { vin } = req.params;
+  if (!vin) {
+    return res.status(400).json({ error: "VIN is required." });
+  }
+
+  // Call the Python script to get car details
+  const pythonProcess = spawn("python3", [
+    path.join(__dirname, "mercedes-scraper", "get_vehicle_data.py"),
+    vin,
+  ]);
+
+  pythonProcess.stdout.setEncoding("utf8");
+  let output = "";
+  let error = "";
+
+  pythonProcess.stdout.on("data", (data) => {
+    output += data.toString();
+  });
+
+  pythonProcess.stderr.on("data", (data) => {
+    error += data.toString();
+  });
+
+  pythonProcess.on("close", (code) => {
+    if (code !== 0) {
+      return res.status(500).json({ error: error || "Python script error." });
+    }
+    try {
+      const resultObj = JSON.parse(output.trim());
+      res.json(resultObj);
+    } catch (e) {
+      res.status(500).json({
+        error: "Invalid JSON from Python script.",
+        details: output.trim(),
+      });
+    }
   });
 });
 

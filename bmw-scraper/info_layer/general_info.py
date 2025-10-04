@@ -37,3 +37,4 @@ class GeneralInfo:
     AUX_MATERIALS = "a:has(div:has-text('AUXILIARY MATERIALS'))"
     COMM_SYSTEMS = "a:has(div:has-text('COMMUNICATION SYSTEMS'))"
     VALUE_PARTS = "a:has(div:has-text('VALUE PARTS'))"
+    QUICK_SERVICE = "a:has(div:has-text('SERVICE AND SCOPE OF REPAIR WORK'))"

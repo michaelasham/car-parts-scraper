@@ -119,7 +119,10 @@ class GeneralOperator:
 
     def click_value_parts(self):
         self.page.locator(GeneralInfo.VALUE_PARTS).click()
-        
+    
+    def click_quick_service_parts(self):
+        self.page.locator(GeneralInfo.QUICK_SERVICE).click()
+    
     def get_car_details(self):
         details = {}
         details["product"] = self.page.locator("option[selected='selected']").nth(1).inner_text()
