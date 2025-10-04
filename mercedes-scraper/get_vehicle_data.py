@@ -89,7 +89,7 @@ def main():
                 pass
             
     
-        result = parse_loose_json(json.dumps(car_data,indent=3).replace("\\n","\n"))
+        result = (json.dumps(car_data,indent=3))
         print(result)
 if __name__ == "__main__":
     main()
