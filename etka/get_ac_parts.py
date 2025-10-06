@@ -91,8 +91,9 @@ def core_scrape(vin: str, part_type: str) -> Optional[str]:
         page.locator("#vinSearch").fill(vin)
         page.locator("#buttonVinSearch").click()
         page.wait_for_selector("div.modal-content.ui-draggable", timeout=120000)
-        page.wait_for_timeout(1000)
-        page.keyboard.press("Escape")
+        # page.wait_for_timeout(1000)
+        # #Modal2 > div > div > div.modal-footer.ui-draggable-handle > button
+        page.locator("#Modal2 > div > div > div.modal-footer.ui-draggable-handle > button").click()
         page.wait_for_selector("div.modal-content.ui-draggable", state="hidden", timeout=120000)
 
         # Click “Air cond. system”

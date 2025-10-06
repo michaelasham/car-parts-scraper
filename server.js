@@ -4,8 +4,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
 import dotenv from "dotenv";
-import { scrapeSuperEtka, initBrowser } from "./etkaScraper.js";
-import { scrapeVehicleInfo } from "./etkaVehicleInfo.js";
 import axios from "axios";
 
 // Basic setup
@@ -114,9 +112,46 @@ app.post("/superetka/find-part", (req, res) => {
     return res.status(400).json({ error: "vin and part are required." });
   }
 
+  const ac_keywords = [
+    "compressor",
+    "evaporator",
+    "compressor bracket",
+    "expansion valve",
+  ];
+  const quick_service_keywords = [
+    "oil-filter",
+    "engine oil",
+    "engine oil filter",
+    "air filter",
+    "air-filter",
+    "spark plugs",
+    "spark-plugs",
+    "dust filter",
+    "pollen filter",
+    "ac filter",
+    "insert filter",
+    "harmful substance filter",
+    "transmission oil",
+  ];
+
+  let selected_operation = "";
+  try {
+    if (ac_keywords.includes(part)) {
+      selected_operation = "get_ac_parts.py";
+    } else if (quick_service_keywords.includes(part)) {
+      selected_operation = "get_maintenance_parts.py";
+    } else {
+      throw new Error("Unsupported Keyword!");
+    }
+  } catch (e) {
+    res.status(500).json({
+      error: "Unsupported Keyword",
+    });
+  }
+
   // Call the Python script with vin and part as arguments
   const pythonProcess = spawn("python3", [
-    path.join(__dirname, "etka", "get_ac_parts.py"),
+    path.join(__dirname, "etka", selected_operation),
     vin,
     part,
   ]);
@@ -413,7 +448,7 @@ app.use((req, res) => {
 
 // Start server
 app.listen(PORT, "0.0.0.0", async () => {
-  await initBrowser();
+  //await initBrowser();
   console.log(`[SERVER] Server running on port ${PORT}`);
 });
 
