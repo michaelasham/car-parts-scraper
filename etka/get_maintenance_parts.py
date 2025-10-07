@@ -32,6 +32,8 @@ SERVICE_PARTS = {
     "Engine oil" : ["engine oil"],
     "Dust/pollen filter": ["dust filter", "pollen filter", "ac filter", "insert filter","harmful substance filter"],
     "Transmisson oil": ["transmisson oil"],
+    "Toothed belt": ["toothed belt", "assembly belt"],
+    "Timing belt kits": ["timing belt", "timing belt kit"]
 
 }
 

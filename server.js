@@ -135,6 +135,10 @@ app.post("/superetka/find-part", (req, res) => {
     "brake discs",
     "brake-discs",
     "disc brake pads",
+    "toothed belt",
+    "assembly belt",
+    "timing belt",
+    "timing belt kit",
   ];
 
   let selected_operation = "";
