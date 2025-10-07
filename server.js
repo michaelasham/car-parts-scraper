@@ -132,6 +132,9 @@ app.post("/superetka/find-part", (req, res) => {
     "insert filter",
     "harmful substance filter",
     "transmission oil",
+    "brake discs",
+    "brake-discs",
+    "disc brake pads",
   ];
 
   let selected_operation = "";

@@ -18,20 +18,26 @@ def normalize_text(s: str) -> str:
     return " ".join(s.split()).lower()
 
 #returns key for appropriate part category
-def determine_category(s: str) -> str:
-    return next((k for k, v in PART_ALIASES.items() if s in v), None)
+def determine_category(s: str, part_type:dict) -> str:
+    return next((k for k, v in part_type.items() if s in v), None)
 
     
 
 
 
-PART_ALIASES = {
+SERVICE_PARTS = {
     "Spark plugs": ["spark plugs", "spark-plugs"],
     "Air filter elements": ["air filter", "air-filter"],
     "Engine oil filter": ["engine oil filter"],
     "Engine oil" : ["engine oil"],
     "Dust/pollen filter": ["dust filter", "pollen filter", "ac filter", "insert filter","harmful substance filter"],
-    "Transmisson oil": ["transmisson oil"]
+    "Transmisson oil": ["transmisson oil"],
+
+}
+
+WEAR_PARTS = {
+    "Brake discs": ["brake discs","brake-discs"],
+    "Disc brake pads": ["disc brake pads"]
 }
 
 # ----------------------------
@@ -43,10 +49,12 @@ def core_scrape(vin: str, part_type: str) -> Optional[str]:
     pwd = os.getenv("ETKA_PASS") or ""
     part_key = normalize_text(part_type)
     include_qty = False
-    if part_key in PART_ALIASES["Spark plugs"]:
+    if part_key in SERVICE_PARTS["Spark plugs"]:
         include_qty = True
-    category = determine_category(part_key)
+    category = determine_category(part_key , SERVICE_PARTS) or determine_category(part_key , WEAR_PARTS) 
+    # #spareContent1 > table > tbody > tr:nth-child(1)
     
+       
     with Stealth().use_sync(sync_playwright()) as p:
         browser = p.chromium.launch(headless=True, timeout=30000)
         context = browser.new_context()
@@ -71,7 +79,8 @@ def core_scrape(vin: str, part_type: str) -> Optional[str]:
         
         #nav-epc > div.topButtons > table > tbody > tr:nth-child(1) > td:nth-child(2)
         page.locator("#nav-epc > div.topButtons > table > tbody > tr").nth(0).locator("td").nth(1).click()
-        
+        if category in WEAR_PARTS:
+            page.locator("#nav-spare1-tab").click()
         pattern = re.compile(fr"^{category}$", re.IGNORECASE)
         page.get_by_text(pattern).click()
         page.wait_for_timeout(1000)
@@ -81,8 +90,9 @@ def core_scrape(vin: str, part_type: str) -> Optional[str]:
         #spareContent0 > table > tbody > tr:nth-child(1) > td:nth-child(6)
         #spareContent0 > table > tbody > tr:nth-child(2) > td:nth-child(6)
         #qty at index 5 and part num at 2
+        content_index = 1 if category in WEAR_PARTS else 0
         data = []
-        rows = page.locator("#spareContent0 > table > tbody > tr")
+        rows = page.locator(f"#spareContent{content_index} > table > tbody > tr")
         rows.first.wait_for(state="attached")
         for i in range(rows.count()):
             qty = rows.nth(i).locator("td").nth(5).inner_text()
