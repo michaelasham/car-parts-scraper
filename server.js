@@ -202,7 +202,12 @@ app.post("/realoem/find-part", (req, res) => {
     "compressor bracket",
     "expansion valve",
   ];
-  const quick_service_keywords = ["oil-filter", "air filter", "spark plugs"];
+  const quick_service_keywords = [
+    "oil-filter",
+    "air filter",
+    "spark plugs",
+    "spark plug",
+  ];
   let selected_operation = "";
   try {
     if (ac_keywords.includes(part)) {

@@ -15,6 +15,8 @@ class QuickServiceOperator:
         include_qty = False
         rows = table.locator("tr")
         rows.first.wait_for(state="attached")
+        if keyword.lower() == "spark plug":
+            include_qty = True
         for row in rows.all():
             tds = row.locator("td")
             td_count = tds.count()
@@ -23,8 +25,7 @@ class QuickServiceOperator:
             try:
                 description = tds.nth(1).inner_text().lower()
                 notes = tds.nth(9).inner_text().lower()
-                if keyword.lower() == "spark plugs":
-                    include_qty = True
+
                 if keyword.lower() in description and "ENDED" not in notes:
                     part_number_link = tds.nth(6).locator("a.inline-a")
                     part_number_link.wait_for(state="attached")
