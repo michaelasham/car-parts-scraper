@@ -450,6 +450,46 @@ app.get("/mercedes/get-car-details/:vin", (req, res) => {
   });
 });
 
+app.get("/ssg/get-car-details/:vin", (req, res) => {
+  const { vin } = req.params;
+  if (!vin) {
+    return res.status(400).json({ error: "VIN is required." });
+  }
+
+  // Call the Python script to get car details
+  const pythonProcess = spawn("python3", [
+    path.join(__dirname, "ssg", "get_vehicle_data.py"),
+    vin,
+  ]);
+
+  pythonProcess.stdout.setEncoding("utf8");
+  let output = "";
+  let error = "";
+
+  pythonProcess.stdout.on("data", (data) => {
+    output += data.toString();
+  });
+
+  pythonProcess.stderr.on("data", (data) => {
+    error += data.toString();
+  });
+
+  pythonProcess.on("close", (code) => {
+    if (code !== 0) {
+      return res.status(500).json({ error: error || "Python script error." });
+    }
+    try {
+      const resultObj = JSON.parse(output.trim());
+      res.json(resultObj);
+    } catch (e) {
+      res.status(500).json({
+        error: "Invalid JSON from Python script.",
+        details: output.trim(),
+      });
+    }
+  });
+});
+
 // 404 Handler
 app.use((req, res) => {
   res.status(404).json({
