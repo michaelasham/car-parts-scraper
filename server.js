@@ -190,6 +190,42 @@ app.post("/superetka/find-part", (req, res) => {
   });
 });
 // BMW Scraper - Find Part
+const ALLOWED_GROUP_KEYS = [
+  "parts repair service",
+  "engine",
+  "engine electrical system",
+  "fuel preparation system",
+  "fuel supply",
+  "radiator",
+  "exhaust system",
+  "clutch",
+  "engine and transmission suspension",
+  "manual transmission",
+  "automatic transmission",
+  "gearshift",
+  "drive shaft",
+  "front axle",
+  "steering",
+  "rear axle",
+  "brakes",
+  "pedals",
+  "wheels",
+  "bodywork",
+  "vehicle trim",
+  "seats",
+  "sliding roof / folding top",
+  "vehicle electrical system",
+  "instruments measuring systems",
+  "lighting",
+  "audio navigation electronic systems",
+  "distance systems cruise control",
+  "equipment parts",
+  "restraint system and accessories",
+  "communication systems",
+  "value part sparepackages service and repair",
+  "auxiliary materials fluidscolorsystem",
+];
+
 app.post("/realoem/find-part", (req, res) => {
   const { vin, part } = req.body;
   if (!vin || !part) {
@@ -214,6 +250,8 @@ app.post("/realoem/find-part", (req, res) => {
       selected_operation = "get_ac_parts.py";
     } else if (quick_service_keywords.includes(part)) {
       selected_operation = "get_maintenance_parts.py";
+    } else if (ALLOWED_GROUP_KEYS.includes(part)) {
+      selected_operation = "get_main_group.py";
     } else {
       throw new Error("Unsupported Keyword!");
     }
