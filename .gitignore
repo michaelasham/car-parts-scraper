@@ -9,3 +9,5 @@ bmw-scraper/__pycache__/
 bmw-scraper/node_modules/
 *.pyc
 *.pyo
+*.xlsx
+count.py

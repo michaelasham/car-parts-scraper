@@ -1,0 +1,30 @@
+import sys
+from playwright.sync_api import sync_playwright
+from utils import block_ads
+from playwright_stealth import Stealth
+from actions import Actions
+import json
+def main():
+    if len(sys.argv) < 3:
+        print("Usage: python main.py <vin> <part>")
+        sys.exit(1)
+    vin = sys.argv[1]
+    part = " ".join(sys.argv[2:])  # Join all remaining args as part
+
+    with Stealth().use_sync(sync_playwright()) as p:
+        browser = p.chromium.launch(headless=True,timeout=30000)
+        context = browser.new_context()
+        context.set_default_timeout(60000)
+        context.set_default_navigation_timeout(60000)
+        page = context.new_page()
+        page.route("**/*", block_ads)
+        page.goto("http://www.realoem.com")
+        page.wait_for_load_state('domcontentloaded')
+        actions = Actions(page)
+        result = actions.find_brake_part_by_keyword(vin,part)
+        print(json.dumps(result))
+        #page.wait_for_timeout(10000)
+        browser.close()
+        
+if __name__ == "__main__":
+    main()

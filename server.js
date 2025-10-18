@@ -243,6 +243,15 @@ app.post("/realoem/find-part", (req, res) => {
     "air filter",
     "spark plugs",
     "spark plug",
+    "brake disc",
+    "brake discs",
+  ];
+
+  const brake_keywords = [
+    "front brake disc",
+    "rear brake disc",
+    "brake pads",
+    "front brake pad wear sensor",
   ];
   let selected_operation = "";
   try {
@@ -250,8 +259,8 @@ app.post("/realoem/find-part", (req, res) => {
       selected_operation = "get_ac_parts.py";
     } else if (quick_service_keywords.includes(part)) {
       selected_operation = "get_maintenance_parts.py";
-    } else if (ALLOWED_GROUP_KEYS.includes(part)) {
-      selected_operation = "get_main_group.py";
+    } else if (brake_keywords.includes(part)) {
+      selected_operation = "get_brakes.py";
     } else {
       throw new Error("Unsupported Keyword!");
     }
@@ -266,6 +275,58 @@ app.post("/realoem/find-part", (req, res) => {
     path.join(__dirname, "bmw-scraper", selected_operation),
     vin,
     part,
+  ]);
+
+  let output = "";
+  let error = "";
+
+  pythonProcess.stdout.on("data", (data) => {
+    output += data.toString();
+  });
+
+  pythonProcess.stderr.on("data", (data) => {
+    error += data.toString();
+  });
+
+  pythonProcess.on("close", (code) => {
+    if (code !== 0) {
+      return res.status(500).json({ error: error || "Python script error." });
+    }
+    try {
+      const resultObj = JSON.parse(output.trim());
+      res.json(resultObj);
+    } catch (e) {
+      res.status(500).json({
+        error: "Invalid JSON from Python script.",
+        details: output.trim(),
+      });
+    }
+  });
+});
+app.post("/realoem/query-group", (req, res) => {
+  const { vin, group } = req.body;
+  if (!vin || !part) {
+    return res.status(400).json({ error: "vin and group are required." });
+  }
+
+  let selected_operation = "";
+  try {
+    if (ALLOWED_GROUP_KEYS.includes(part)) {
+      selected_operation = "get_main_group.py";
+    } else {
+      throw new Error("Unsupported Keyword!");
+    }
+  } catch (e) {
+    res.status(500).json({
+      error: "Unsupported Keyword",
+    });
+  }
+
+  // Call the Python script with vin and part as arguments
+  const pythonProcess = spawn("python3", [
+    path.join(__dirname, "bmw-scraper", selected_operation),
+    vin,
+    group,
   ]);
 
   let output = "";
