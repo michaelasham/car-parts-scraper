@@ -1,136 +1,161 @@
+#!/usr/bin/env python3
+"""
+Create-only: Google Places → ClickUp (NO custom fields, includes Place ID)
+- Always creates NEW tasks in a target ClickUp List.
+- Writes all data (including Place ID) into the task description.
+- Adds tags like ["google-maps", "city-cairo"] (optional and free).
+
+ENV (.env or system):
+  GOOGLE_MAPS_API_KEY=...
+  CLICKUP_TOKEN=pk_************************
+  CLICKUP_LIST_ID=123456789
+
+You can tweak:
+  CITIES, QUERY_TMPL, MIN_REVIEWS, TAG_PREFIX
+"""
+
 import os
 import time
-import json
-import math
 import requests
-import pandas as pd
-from dotenv import load_dotenv
+from typing import Optional
 
-load_dotenv()
+# ---- optional .env ----
+try:
+    from dotenv import load_dotenv  # type: ignore
+    load_dotenv()
+except Exception:
+    pass
 
-API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
-if not API_KEY:
-    raise SystemExit("Missing GOOGLE_MAPS_API_KEY env var")
-
-TEXT_SEARCH_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json"
-DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
+# ---------- Config ----------
+GOOGLE_API_KEY  = os.environ.get("GOOGLE_MAPS_API_KEY")
+CLICKUP_TOKEN   = os.environ.get("CLICKUP_TOKEN")
+CLICKUP_LIST_ID = os.environ.get("CLICKUP_LIST_ID")
 
 CITIES = ["Cairo", "Alexandria"]
 QUERY_TMPL = "bmw service center in {city}"
 MIN_REVIEWS = 15
+TAG_PREFIX = "city-"  # becomes, e.g., "city-cairo"
 
-# Keep columns in the exact order you’ll map in ClickUp
-OUT_COLUMNS = [
-    "Name",
-    "Address",
-    "City",
-    "Google Maps Link",
-    "Google Rating",
-    "Phone",
-    "Reviews Count",
-    "Source",
-]
+TEXT_SEARCH_URL = "https://maps.googleapis.com/maps/api/place/textsearch/json"
+DETAILS_URL     = "https://maps.googleapis.com/maps/api/place/details/json"
 
-def text_search_all_pages(query: str, region: str = "eg", language: str = "en"):
-    """Yield all results across pagination for a given text search query."""
-    params = {
-        "query": query,
-        "key": API_KEY,
-        "region": region,     # bias results to Egypt
-        "language": language, # english labels
-    }
-    while True:
-        r = requests.get(TEXT_SEARCH_URL, params=params, timeout=30)
-        r.raise_for_status()
-        data = r.json()
+CU_BASE    = "https://api.clickup.com/api/v2"
+CU_HEADERS = {"Authorization": os.environ.get("CLICKUP_TOKEN",""), "Content-Type": "application/json"}
 
-        status = data.get("status")
-        if status not in ("OK", "ZERO_RESULTS"):
-            raise RuntimeError(f"TextSearch status={status} error={data}")
-
-        for res in data.get("results", []):
-            yield res
-
-        next_token = data.get("next_page_token")
-        if not next_token:
-            break
-        # Google requires a short wait before the next page token becomes active
-        time.sleep(2.0)
-        params = {"pagetoken": next_token, "key": API_KEY}
-
-def place_details(place_id: str):
-    """Fetch selected fields from Place Details."""
-    fields = ",".join([
-        "name",
-        "formatted_address",
-        "formatted_phone_number",
-        "rating",
-        "user_ratings_total",
-        "url"  # may return a canonical Maps URL; not guaranteed
-    ])
-    params = {"place_id": place_id, "fields": fields, "key": API_KEY, "language": "en"}
-    r = requests.get(DETAILS_URL, params=params, timeout=30)
-    r.raise_for_status()
-    data = r.json()
-    if data.get("status") != "OK":
-        # some places block details; return minimal structure
-        return {}
-    return data.get("result", {})
+# ---------- Helpers ----------
+def require_env(name: str) -> str:
+    val = os.environ.get(name)
+    if not val:
+        raise SystemExit(f"Missing required env var: {name}")
+    return val
 
 def maps_link_from_place_id(place_id: str) -> str:
     return f"https://www.google.com/maps/place/?q=place_id:{place_id}"
 
+def safe_float(x) -> Optional[float]:
+    try:
+        return float(x)
+    except Exception:
+        return None
+
+# ---------- Google Places ----------
+def text_search_all_pages(query: str, region: str = "eg", language: str = "en"):
+    params = {"query": query, "key": GOOGLE_API_KEY, "region": region, "language": language}
+    while True:
+        r = requests.get(TEXT_SEARCH_URL, params=params, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+        status = data.get("status")
+        if status not in ("OK", "ZERO_RESULTS"):
+            raise RuntimeError(f"TextSearch status={status} error={data}")
+        for res in data.get("results", []):
+            yield res
+        next_token = data.get("next_page_token")
+        if not next_token:
+            break
+        # token needs a short warm-up before next page becomes available
+        time.sleep(2.0)
+        params = {"pagetoken": next_token, "key": GOOGLE_API_KEY}
+
+def place_details(place_id: str) -> dict:
+    fields = ",".join([
+        "name","formatted_address","formatted_phone_number",
+        "rating","user_ratings_total","url",
+    ])
+    params = {"place_id": place_id, "fields": fields, "key": GOOGLE_API_KEY, "language": "en"}
+    r = requests.get(DETAILS_URL, params=params, timeout=30)
+    r.raise_for_status()
+    data = r.json()
+    return data.get("result", {}) if data.get("status") == "OK" else {}
+
+# ---------- ClickUp (create-only) ----------
+def cu_create_task(list_id: str, name: str, description: str, tags: list[str]) -> dict:
+    payload = {"name": name, "description": description, "tags": tags}
+    r = requests.post(f"{CU_BASE}/list/{list_id}/task", headers=CU_HEADERS, json=payload, timeout=30)
+    try:
+        r.raise_for_status()
+    except Exception as e:
+        raise SystemExit(f"Create failed for '{name}': {e}\nBody: {r.text}")
+    return r.json()
+
+# ---------- Orchestration ----------
 def main():
-    rows = []
-    seen = set()  # dedupe by place_id across both cities
+    require_env("GOOGLE_MAPS_API_KEY")
+    require_env("CLICKUP_TOKEN")
+    list_id = require_env("CLICKUP_LIST_ID")
+
+    created = 0
 
     for city in CITIES:
         query = QUERY_TMPL.format(city=city)
+        print(f"🔎 Searching: {query}")
         for res in text_search_all_pages(query):
             pid = res.get("place_id")
-            if not pid or pid in seen:
+            if not pid:
                 continue
-            seen.add(pid)
 
-            # Quick filter on rating count (exists in textsearch result)
+            # simple quality gate
             reviews = res.get("user_ratings_total", 0) or 0
             if reviews <= MIN_REVIEWS:
                 continue
 
-            details = place_details(pid) or {}
-            name = details.get("name") or res.get("name")
-            address = details.get("formatted_address", "")
-            phone = details.get("formatted_phone_number", "")
-            rating = details.get("rating", res.get("rating", ""))
-            reviews = details.get("user_ratings_total", reviews)
+            d = place_details(pid) or {}
+            name    = d.get("name") or res.get("name") or "Unknown"
+            address = d.get("formatted_address", "") or res.get("formatted_address", "")
+            phone   = d.get("formatted_phone_number", "")
+            rating  = d.get("rating", res.get("rating", ""))
+            reviews = d.get("user_ratings_total", reviews)
+            maps_url = (d.get("url") or "").strip() or maps_link_from_place_id(pid)
 
-            maps_link = details.get("url") or maps_link_from_place_id(pid)
+            # Build a rich description (includes PLACE_ID marker)
+            description = "\n".join([
+                address,
+                "",
+                f"Maps: {maps_url}",
+                f"Rating: {rating if rating not in (None,'') else '-'}",
+                f"Reviews: {reviews if reviews not in (None,'') else '-'}",
+                f"Phone: {phone if phone else '-'}",
+                f"Source: Google Maps",
+                f"City: {city}",
+                f"PLACE_ID: {pid}",
+            ])
 
-            rows.append({
-                "Name": name,
-                "Address": address,
-                "City": city,
-                "Google Maps Link": maps_link,
-                "Google Rating": rating,
-                "Phone": phone,
-                "Reviews Count": reviews,
-                "Source": "Google Places",
-            })
+            # Helpful tags; totally optional, not custom fields
+            tags = ["google-maps", f"{TAG_PREFIX}{city.lower()}"]
 
-    # Sort by city then rating desc, then reviews desc
-    def rating_key(v):
-        try:
-            return float(v) if v not in ("", None) else -math.inf
-        except Exception:
-            return -math.inf
+            obj = cu_create_task(list_id, name, description, tags)
+            print(f"🆕 Created: {obj.get('url','<no url>')}")
+            created += 1
 
-    rows.sort(key=lambda r: (r["City"], -rating_key(r["Google Rating"]), -(r["Reviews Count"] or 0)))
+            time.sleep(0.10)  # be nice to both APIs
 
-    # Export to XLSX
-    df = pd.DataFrame(rows, columns=OUT_COLUMNS)
-    out_path = "bmw_service_centers.xlsx"
-    df.to_excel(out_path, index=False)
-    print(f"✅ Exported {len(df)} rows to {out_path}")
+    print(f"✅ Done. Created {created} tasks (no custom fields, includes Place ID in description).")
 
 if __name__ == "__main__":
+    if not GOOGLE_API_KEY:
+        raise SystemExit("Missing GOOGLE_MAPS_API_KEY")
+    if not CLICKUP_TOKEN:
+        raise SystemExit("Missing CLICKUP_TOKEN")
+    if not CLICKUP_LIST_ID:
+        raise SystemExit("Missing CLICKUP_LIST_ID")
     main()

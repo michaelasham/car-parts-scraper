@@ -11,3 +11,4 @@ bmw-scraper/node_modules/
 *.pyo
 *.xlsx
 count.py
+*.chrome-profile-7zap

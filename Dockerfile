@@ -17,6 +17,8 @@ RUN python3 -m pip install playwright-stealth
 
 RUN python3 -m pip install python-dotenv
 
+RUN python3 -m pip install camoufox
+
 # Set working directory
 WORKDIR /app
 
