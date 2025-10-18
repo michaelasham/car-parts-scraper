@@ -237,6 +237,7 @@ app.post("/realoem/find-part", (req, res) => {
     "evaporator",
     "compressor bracket",
     "expansion valve",
+    "condenser",
   ];
   const quick_service_keywords = [
     "oil-filter",
@@ -305,13 +306,13 @@ app.post("/realoem/find-part", (req, res) => {
 });
 app.post("/realoem/query-group", (req, res) => {
   const { vin, group } = req.body;
-  if (!vin || !part) {
+  if (!vin || !group) {
     return res.status(400).json({ error: "vin and group are required." });
   }
 
   let selected_operation = "";
   try {
-    if (ALLOWED_GROUP_KEYS.includes(part)) {
+    if (ALLOWED_GROUP_KEYS.includes(group)) {
       selected_operation = "get_main_group.py";
     } else {
       throw new Error("Unsupported Keyword!");
