@@ -121,7 +121,7 @@ def main():
     vin = sys.argv[1]
 
     with Stealth().use_sync(sync_playwright()) as p:
-        browser = p.chromium.launch(headless=False, timeout=30000, slow_mo=0)
+        browser = p.chromium.launch(headless=True, timeout=30000, slow_mo=0)
         context = browser.new_context(
             viewport={"width": random.randint(1200, 1920), "height": random.randint(720, 1080)}
         )

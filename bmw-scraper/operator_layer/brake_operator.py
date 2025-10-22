@@ -13,6 +13,12 @@ class BrakeOperator:
         
     def click_rear_brake(self):
         self.page.locator(BrakeInfo.REAR_BRAKE).click()
+    
+    def click_rear_sensor(self):
+        try:
+            self.page.locator(BrakeInfo.REAR_SENSOR).click()
+        except:
+            self.page.locator(BrakeInfo.REAR_SENSOR_ALT).click()
         
     def click_brake_pads(self):
         self.page.locator(BrakeInfo.BRAKE_PADS).click()

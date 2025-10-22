@@ -130,6 +130,10 @@ class Actions:
             self.brake.click_front_sensor()
             result = self.brake.filter_brake_table("Brake pad wear sensor")
             
+        elif keyword == "rear brake pad wear sensor":
+            self.brake.click_rear_sensor()
+            result = self.brake.filter_brake_table("Brake pad wear sensor, rear")
+            
         elif keyword == "brake pads":
             self.brake.click_brake_pads()
             result = self.brake.filter_brake_table(keyword)

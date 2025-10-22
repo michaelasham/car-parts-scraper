@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y curl \
 
 # Install Playwright for Python
 RUN python3 -m pip install playwright && \
-    python3 -m playwright install chromium
+    python3 -m playwright install chromium firefox
 
 
 RUN python3 -m pip install playwright-stealth
