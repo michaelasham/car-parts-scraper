@@ -10,14 +10,16 @@ RUN apt-get update && apt-get install -y curl \
 
 # Install Playwright for Python
 RUN python3 -m pip install playwright && \
-    python3 -m playwright install chromium firefox
+    python3 -m playwright install chromium
 
+RUN python3 -m pip install "camoufox[geoip]"
+# Download Camoufox patched browser into the image
+RUN python3 -m camoufox fetch
 
 RUN python3 -m pip install playwright-stealth
 
 RUN python3 -m pip install python-dotenv
 
-RUN python3 -m pip install camoufox
 
 # Set working directory
 WORKDIR /app
