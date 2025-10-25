@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 # Camoufox (Playwright-compatible API)
 from camoufox.sync_api import Camoufox
-from playwright.sync_api import TimeoutError
+from playwright.sync_api import TimeoutError, Error
 
 load_dotenv()
 
@@ -134,7 +134,7 @@ def main():
 
     # Camoufox context (Playwright-like API), with humanize enabled
     with Camoufox(
-        headless=True,
+        headless=False,
         humanize=False,
         window=(1366, 864)
     ) as browser:
@@ -252,8 +252,8 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except TimeoutError:
-        print("Operation timed out")
+    except Error as e:
+        print("Operation timed out",e)
         sys.exit(3)
     except Exception as e:
         print(f"Error: {e}")
