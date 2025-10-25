@@ -3,12 +3,14 @@
 
 """
 7zap/get_ac_parts.py
+
 Fully rewritten with:
 - Timestamped DEBUG/INFO/WARN/ERROR logs to stderr
 - Camoufox -> Chromium fallback (toggle with USE_CAMOUFOX=0)
 - Stable browser context (locale, UA, viewport, timezone)
 - Overlay dismissal and modal-close assertion
 - Robust VIN input discovery (multiple selectors + retries)
+- Resilient catalog interactions (no_wait_after, JS/force click fallback)
 - Diagnostics on failure (URL, HTML slice, screenshot in /tmp)
 - Final JSON ONLY to stdout; sentinel EXITING_WITH=<code> to stderr
 """
@@ -23,11 +25,12 @@ import traceback
 from datetime import datetime
 from dotenv import load_dotenv
 
-# ---------------------------- Logging helpers ---------------------------------
+# =============================== Logging ======================================
+
 def _ts() -> str:
     return datetime.now().strftime("%H:%M:%S")
 
-def _j(obj) -> str:
+def _json(obj) -> str:
     try:
         return json.dumps(obj, ensure_ascii=False, default=str)
     except Exception:
@@ -36,7 +39,7 @@ def _j(obj) -> str:
 def _log(level: str, msg: str, **kv):
     line = f"[{_ts()}] {level} 7zap.get_ac_parts: {msg}"
     if kv:
-        line += " " + _j(kv)
+        line += " " + _json(kv)
     print(line, file=sys.stderr, flush=True)
 
 def DEBUG(msg, **kv): _log("DEBUG", msg, **kv)
@@ -51,7 +54,8 @@ def hard_exit(code: int):
     finally:
         os._exit(code)
 
-# ---------------------------- Humanization ------------------------------------
+# ============================ Humanization ====================================
+
 HUMAN_DELAY_RANGE = (0.18, 0.58)
 HUMAN_CLICK_HESITATION = (0.05, 0.18)
 HUMAN_LONG_THINK = (0.6, 1.2)
@@ -59,6 +63,7 @@ TYPE_DELAY_RANGE_MS = (55, 160)
 MOUSE_STEPS_RANGE = (18, 42)
 SCROLL_CHANCE = 0.35
 SCROLL_PIXELS = (180, 800)
+
 _MOUSE_POS = [random.randint(30, 200), random.randint(120, 300)]
 
 def human_sleep(a=None, b=None):
@@ -74,7 +79,7 @@ def maybe_long_think(p=0.22):
     else:
         DEBUG("Long think skipped")
 
-def bezier(p0, p1, p2, p3, t):
+def _bezier(p0, p1, p2, p3, t):
     u = 1 - t
     return (
         (u**3) * p0[0] + 3 * (u**2) * t * p1[0] + 3 * u * (t**2) * p2[0] + (t**3) * p3[0],
@@ -95,11 +100,15 @@ def move_mouse_curve(page, tx, ty):
     c2 = (sx + r * math.cos(angle + wobble2), sy + r * math.sin(angle + wobble2))
 
     steps = random.randint(*MOUSE_STEPS_RANGE)
-    DEBUG("Mouse move", start=[round(sx,1), round(sy,1)], end=[round(ex,1), round(ey,1)],
-          c1=[round(c1[0],1), round(c1[1],1)], c2=[round(c2[0],1), round(c2[1],1)], steps=steps)
+    DEBUG("Mouse move",
+          start=[round(sx,1), round(sy,1)],
+          end=[round(ex,1), round(ey,1)],
+          c1=[round(c1[0],1), round(c1[1],1)],
+          c2=[round(c2[0],1), round(c2[1],1)],
+          steps=steps)
     for i in range(1, steps + 1):
         t = i / steps
-        x, y = bezier((sx, sy), c1, c2, (ex, ey), t)
+        x, y = _bezier((sx, sy), c1, c2, (ex, ey), t)
         page.mouse.move(float(x), float(y), steps=1)
 
     jit = random.randint(0, 2)
@@ -156,7 +165,8 @@ def maybe_scroll(page):
     else:
         DEBUG("Skipping scroll")
 
-# ---------------------------- Robust helpers ----------------------------------
+# ============================== Helpers =======================================
+
 def wait_visible_css(page, selector: str, timeout=10000):
     DEBUG("wait_visible_css:start", selector=selector, timeout_ms=timeout)
     page.wait_for_function(
@@ -267,7 +277,64 @@ def try_open_search_ui(page):
             pass
     page.wait_for_timeout(400)
 
-# ---------------------------- Browser launcher --------------------------------
+def click_safely(locator, label="(unnamed)", timeout=8000):
+    locator = locator.first
+    locator.wait_for(state="attached", timeout=timeout)
+    try:
+        locator.scroll_into_view_if_needed(timeout=1500)
+    except Exception:
+        pass
+    try:
+        locator.wait_for(state="visible", timeout=timeout)
+    except Exception:
+        DEBUG("click_safely: not visible, attempting JS click anyway", label=label)
+
+    try:
+        locator.click(no_wait_after=True, timeout=timeout)
+        DEBUG("click_safely: normal click ok", label=label)
+        return
+    except Exception as e:
+        WARN("click_safely: normal click failed", label=label, err=str(e))
+    try:
+        locator.evaluate("(el)=>el.click()")
+        DEBUG("click_safely: JS click ok", label=label)
+        return
+    except Exception as e:
+        WARN("click_safely: JS click failed", label=label, err=str(e))
+    try:
+        locator.click(force=True, no_wait_after=True, timeout=timeout)
+        DEBUG("click_safely: force click ok", label=label)
+        return
+    except Exception as e:
+        ERROR("click_safely: force click failed", label=label, err=str(e))
+        raise
+
+def wait_for_catalog_ready(page, timeout_ms=15000):
+    DEBUG("wait_for_catalog_ready:start", timeout_ms=timeout_ms)
+    page.wait_for_function(
+        """
+        () => {
+          const nodes = document.querySelectorAll('.zp-element-title.nodeTitle');
+          return nodes && nodes.length > 3;
+        }
+        """,
+        timeout=timeout_ms
+    )
+    page.wait_for_timeout(200)
+    try:
+        titles = page.evaluate("""
+          () => Array.from(document.querySelectorAll('.zp-element-title.nodeTitle'))
+                      .map(e => e.textContent.trim()).slice(0, 50)
+        """)
+        DEBUG("catalog_titles", count=len(titles))
+        for i, t in enumerate(titles):
+            DEBUG("catalog_title", idx=i, title=t)
+    except Exception as e:
+        WARN("could not list catalog titles", err=str(e))
+    DEBUG("wait_for_catalog_ready:ok")
+
+# ============================ Browser launcher =================================
+
 def launch_browser():
     use_camoufox = os.getenv("USE_CAMOUFOX", "1") == "1"
     if use_camoufox:
@@ -291,7 +358,8 @@ def launch_browser():
             finally: self.pw.stop()
     return ("chromium", PWWrapper())
 
-# ---------------------------- Main --------------------------------------------
+# ================================ Main ========================================
+
 def main() -> int:
     t0 = time.time()
     INFO("Script start")
@@ -300,7 +368,9 @@ def main() -> int:
     load_dotenv()
     user = os.getenv("ZAP_USER")
     pwd  = os.getenv("ZAP_PASS")
-    INFO("Env present", ZAP_USER=bool(user), ZAP_PASS=bool(pwd),
+    INFO("Env present",
+         ZAP_USER=bool(user),
+         ZAP_PASS=bool(pwd),
          USE_CAMOUFOX=os.getenv("USE_CAMOUFOX","unset"),
          CAMOUFOX_CACHE_DIR=os.getenv("CAMOUFOX_CACHE_DIR","unset"))
 
@@ -324,7 +394,7 @@ def main() -> int:
 
     try:
         with wrapper as browser:
-            # Context (preferred) for stable UA/locale
+            # Prefer a context for stable UA/locale
             try:
                 ctx = browser.new_context(
                     locale="en-US",
@@ -418,7 +488,6 @@ def main() -> int:
                 return 11
 
             try:
-                # If canonical id is present, ensure visible; otherwise focus found element
                 try:
                     wait_visible_css(page, "#mainSearchInput", timeout=3000)
                 except Exception:
@@ -449,45 +518,83 @@ def main() -> int:
             first_mod.wait_for(state="visible")
             maybe_scroll(page)
             click_like_human(page, first_mod)
+
+            # Ensure the catalog page is fully ready
             page.wait_for_load_state("domcontentloaded")
+            page.wait_for_load_state("networkidle")
             human_sleep()
 
-            # --- Air Conditioning branch
+            # --- Air Conditioning tree (resilient)
             INFO("Opening Air Conditioning tree")
-            page.locator(".zp-element-title.nodeTitle", has_text="Air Conditioning").click()
-            page.wait_for_load_state("domcontentloaded")
-            human_sleep(2.5, 4.2)
+            try:
+                wait_for_catalog_ready(page, timeout_ms=20000)
+                ac_node = page.locator(".zp-element-title.nodeTitle", has_text="Air Conditioning").first
+                click_safely(ac_node, label="Air Conditioning")
+                page.wait_for_timeout(400)
+            except Exception as e:
+                ERROR("Failed to open Air Conditioning node", err=str(e))
+                dump_diag(page, "ac_node_click_fail")
+                print("[]")
+                return 13
 
+            human_sleep(1.5, 2.2)
+
+            # --- Branch selection
             INFO("Scrape branch", part=part)
             if part == "compressor":
-                page.locator(".zp-element-title.nodeTitle", has_text="Compressor / Parts").click()
-                page.wait_for_load_state("domcontentloaded")
-                page.locator(".zp-element-title.nodeTitle", has_text="HEATING & AIR CONDITIONING - COMPRESSOR[]").nth(0).click()
+                click_safely(
+                    page.locator(".zp-element-title.nodeTitle", has_text="Compressor / Parts"),
+                    label="Compressor / Parts",
+                )
+                page.wait_for_timeout(300)
+                click_safely(
+                    page.locator(".zp-element-title.nodeTitle",
+                                 has_text="HEATING & AIR CONDITIONING - COMPRESSOR[]").nth(0),
+                    label="HEATING & AIR CONDITIONING - COMPRESSOR[]",
+                )
                 page.wait_for_load_state("domcontentloaded")
                 rows = page.locator("div.px-1.flex-grow-1 > span", has_text="COMPRESSOR ASSY")
+
             elif part == "evaporator":
-                page.locator(".zp-element-title.nodeTitle", has_text="Controls / Regulation").click()
-                page.wait_for_load_state("domcontentloaded")
-                page.locator(".zp-element-title.nodeTitle", has_text="HEATING & AIR CONDITIONING - COOLER UNIT").nth(0).click()
+                click_safely(
+                    page.locator(".zp-element-title.nodeTitle", has_text="Controls / Regulation"),
+                    label="Controls / Regulation",
+                )
+                page.wait_for_timeout(300)
+                click_safely(
+                    page.locator(".zp-element-title.nodeTitle",
+                                 has_text="HEATING & AIR CONDITIONING - COOLER UNIT").nth(0),
+                    label="HEATING & AIR CONDITIONING - COOLER UNIT",
+                )
                 page.wait_for_load_state("domcontentloaded")
                 rows = page.locator("div.px-1.flex-grow-1 > span", has_text="EVAPORATOR SUB-ASSY")
+
             elif part == "expansion valve":
-                page.locator(".zp-element-title.nodeTitle", has_text="Controls / Regulation").click()
-                page.wait_for_load_state("domcontentloaded")
-                page.locator(".zp-element-title.nodeTitle", has_text="HEATING & AIR CONDITIONING - COOLER UNIT").nth(0).click()
+                click_safely(
+                    page.locator(".zp-element-title.nodeTitle", has_text="Controls / Regulation"),
+                    label="Controls / Regulation",
+                )
+                page.wait_for_timeout(300)
+                click_safely(
+                    page.locator(".zp-element-title.nodeTitle",
+                                 has_text="HEATING & AIR CONDITIONING - COOLER UNIT").nth(0),
+                    label="HEATING & AIR CONDITIONING - COOLER UNIT",
+                )
                 page.wait_for_load_state("domcontentloaded")
                 rows = page.locator("div.px-1.flex-grow-1 > span", has_text="VALVE")
+
             else:
                 ERROR("Unsupported part", allowed=["compressor", "evaporator", "expansion valve"])
                 print("[]")
                 return 4
 
-            rows.first.wait_for(state="attached")
+            # --- Extract rows
+            rows.first.wait_for(state="attached", timeout=15000)
             cnt = rows.count()
             DEBUG("Row count", count=cnt)
             for i in range(cnt):
                 try:
-                    num = rows.nth(i).locator("strong").inner_text(timeout=2000)
+                    num = rows.nth(i).locator("strong").inner_text(timeout=3000)
                     if num:
                         part_nums.append(num)
                 except Exception:
@@ -511,7 +618,8 @@ def main() -> int:
     finally:
         INFO("Script end", elapsed_s=round(time.time() - t0, 2))
 
-# ---------------------------- Entrypoint --------------------------------------
+# ============================== Entrypoint ====================================
+
 if __name__ == "__main__":
     code = main()
     hard_exit(code)
