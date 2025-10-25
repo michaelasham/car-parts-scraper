@@ -232,6 +232,8 @@ app.post("/realoem/find-part", (req, res) => {
     return res.status(400).json({ error: "vin and part are required." });
   }
 
+  part = part.toLowerCase();
+
   const ac_keywords = [
     "compressor",
     "evaporator",
@@ -254,6 +256,12 @@ app.post("/realoem/find-part", (req, res) => {
     "brake pads",
     "front brake pad wear sensor",
   ];
+
+  const radiator_keywords = [
+    "expansion tank",
+    "radiator",
+    "fan housing w/ fan",
+  ];
   let selected_operation = "";
   try {
     if (ac_keywords.includes(part)) {
@@ -262,6 +270,8 @@ app.post("/realoem/find-part", (req, res) => {
       selected_operation = "get_maintenance_parts.py";
     } else if (brake_keywords.includes(part)) {
       selected_operation = "get_brakes.py";
+    } else if (radiator_keywords.includes(part)) {
+      selected_operation = "get_radiator_parts.py";
     } else {
       throw new Error("Unsupported Keyword!");
     }

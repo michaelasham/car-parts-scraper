@@ -3,7 +3,7 @@ from operator_layer.ac_operator import ACOperator
 from playwright.sync_api import Page
 from operator_layer.quick_service_operator import QuickServiceOperator
 from operator_layer.brake_operator import BrakeOperator
-
+from operator_layer.radiator_operator import RadiatorOperator
 AC_KEYWORD_MAP = {
     "evaporator": "evaporator_expansion_valve",
     "expansion valve": "evaporator_expansion_valve",
@@ -42,6 +42,7 @@ class Actions:
         self.ac = ACOperator(page)
         self.quick = QuickServiceOperator(page)
         self.brake = BrakeOperator(page)
+        self.radiator = RadiatorOperator(page)
 
     def find_ac_part_by_keyword(self, vin: str, keyword: str):
         section = AC_KEYWORD_MAP.get(keyword.lower())
@@ -137,5 +138,28 @@ class Actions:
         elif keyword == "brake pads":
             self.brake.click_brake_pads()
             result = self.brake.filter_brake_table(keyword)
+            
+        return result
+    
+    def find_radiator_part_by_keyword(self, vin:str, keyword:str):
+        self.general.await_adblock(4000)
+        self.general.dismiss_adblock()
+        self.general.click_bmw_catalog()
+        self.general.enter_vin(vin)
+        self.general.click_first_search()
+        self.general.click_browse_parts()
+        self.general.click_radiator()
+        result = None
+        if keyword == "radiator":
+            self.radiator.click_radiator()
+            result = self.radiator.filter_radiator_parts("Radiator")
+        
+        if keyword == "expansion tank":
+            self.radiator.click_expansion_tank()
+            result = self.radiator.filter_radiator_parts("Expansion tank")
+        
+        if keyword == "fan housing w/ fan":
+            self.radiator.click_fan_housing_w_fan()
+            result = self.radiator.filter_radiator_parts("Fan housing with fan")
             
         return result

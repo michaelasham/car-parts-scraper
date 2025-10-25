@@ -5,6 +5,9 @@ class GeneralOperator:
     def __init__(self, page: Page):
         self.page = page
         
+    def await_adblock(self, t):
+        self.page.wait_for_timeout(t)
+        
     def dismiss_adblock(self):
         if self.page.locator(GeneralInfo.DISMISS_ADBLOCK).is_visible():
             self.page.locator(GeneralInfo.DISMISS_ADBLOCK).click()
