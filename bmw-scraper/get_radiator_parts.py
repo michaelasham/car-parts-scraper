@@ -12,7 +12,7 @@ def main():
     part = " ".join(sys.argv[2:])  # Join all remaining args as part
 
     with Stealth().use_sync(sync_playwright()) as p:
-        browser = p.chromium.launch(headless=False,timeout=30000)
+        browser = p.chromium.launch(headless=True,timeout=30000)
         context = browser.new_context()
         context.set_default_timeout(60000)
         context.set_default_navigation_timeout(60000)
