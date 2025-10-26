@@ -9,5 +9,5 @@ class ACInfo:
     DIST_HOUSING = "a:has(div:has-text('DISTRIBUTION HOUSING'))"
     FILTER_HOUSING = "a:has(div:has-text('FILTER HOUSING'))"
     # TODO: continue
-    COMPRESSOR = "a:has(div:has-text('RP A/C COMPRESSOR'))"
+    COMPRESSOR = "a:has(div:has-text('COMPRESSOR'))"
     CONDENSER = "a:has(div:has-text('CONDENSER AIR CONDITIONING'))"
