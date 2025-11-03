@@ -212,6 +212,8 @@ const ALLOWED_GROUP_KEYS = [
   "wheels",
   "bodywork",
   "vehicle trim",
+  "service and scope of repair work",
+  "heating and air conditioning",
   "seats",
   "sliding roof / folding top",
   "vehicle electrical system",

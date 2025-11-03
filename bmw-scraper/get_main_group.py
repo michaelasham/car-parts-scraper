@@ -31,6 +31,7 @@ ALLOWED_GROUPS = {
     "bodywork": "BODYWORK",
     "vehicle trim": "VEHICLE TRIM",
     "seats": "SEATS",
+    "heating and air conditioning" : "HEATER AND AIR CONDITIONING",
     "sliding roof / folding top": "SLIDING ROOF / FOLDING TOP",
     "vehicle electrical system": "VEHICLE ELECTRICAL SYSTEM",
     "instruments measuring systems": "INSTRUMENTS, MEASURING SYSTEMS",
@@ -41,6 +42,7 @@ ALLOWED_GROUPS = {
     "restraint system and accessories": "RESTRAINT SYSTEM AND ACCESSORIES",
     "communication systems": "COMMUNICATION SYSTEMS",
     "auxiliary materials fluidscolorsystem": "AUXILIARY MATERIALS, FLUIDS/COLOR SYSTEM",
+    "service and scope of repair work" : "SERVICE AND SCOPE OF REPAIR WORK"
 }
 
 # --- Helper functions for parsing the RealOEM parts table --- #
@@ -147,7 +149,7 @@ def main():
                     continue
                 link.click()
                 page.wait_for_load_state("domcontentloaded")
-
+                page.wait_for_timeout(3000)
                 table_text = page.locator("#partsList").inner_text()
                 img_src = page.locator("#partsimg > img").get_attribute("src") or ""
                 full_img = urljoin("http://www.realoem.com", img_src)
@@ -161,7 +163,8 @@ def main():
                 })
 
                 page.go_back(wait_until="domcontentloaded")
-
+        except Exception:
+            pass
         finally:
             try:
                 context.unroute(ROUTE_PATTERN, block_ads)
