@@ -201,8 +201,8 @@ def main():
                         page.wait_for_load_state("domcontentloaded")
                     except Exception:
                         pass
-        except Exception:
-            pass
+        except Exception as e:
+            print(e)
         finally:
             try:
                 page.close()
