@@ -136,6 +136,11 @@ def main():
             page.locator("#vin").fill(vin)
             page.locator("input[type='submit'][value='Search']").first.click()
             page.wait_for_load_state("domcontentloaded")
+            
+            #wait out the adblock popup
+            page.wait_for_timeout(3000)
+            if page.locator("span.ggmtgz:has-text('×')").is_visible():
+                page.locator("span.ggmtgz:has-text('×')").click()
 
             page.get_by_text("Browse Parts", exact=False).click()
             page.wait_for_load_state("domcontentloaded")
