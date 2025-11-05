@@ -158,8 +158,8 @@ def main():
                 try:
                     txt = titles_locator.nth(i).inner_text()
                     items.append((i, txt))
-                except Exception:
-                    continue
+                except Exception as e:
+                    print(e)
 
             # Normalize and optionally filter by provided subgroup filters
             def normalize(s: str) -> str:
