@@ -192,9 +192,9 @@ def main():
                         "diagram_image": full_img,
                         "parts": parsed_table
                     })
-                except Exception:
+                except Exception as e:
                     # continue with next subgroup on any failure
-                    pass
+                    print(e)
                 finally:
                     try:
                         page.go_back(wait_until="domcontentloaded")
