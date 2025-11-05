@@ -315,15 +315,17 @@ app.post("/realoem/find-part", (req, res) => {
   });
 });
 app.post("/realoem/query-group", (req, res) => {
-  const { vin, group } = req.body;
-  if (!vin || !group) {
-    return res.status(400).json({ error: "vin and group are required." });
+  const { vin, group, subgroup } = req.body;
+  if (!vin || !group || !subgroup) {
+    return res
+      .status(400)
+      .json({ error: "vin, group and subgroup are required." });
   }
 
   let selected_operation = "";
   try {
     if (ALLOWED_GROUP_KEYS.includes(group)) {
-      selected_operation = "get_main_group.py";
+      selected_operation = "get_main_group_v2.py";
     } else {
       throw new Error("Unsupported Keyword!");
     }
@@ -338,6 +340,7 @@ app.post("/realoem/query-group", (req, res) => {
     path.join(__dirname, "bmw-scraper", selected_operation),
     vin,
     group,
+    subgroup,
   ]);
 
   let output = "";
