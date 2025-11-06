@@ -315,6 +315,59 @@ app.post("/realoem/find-part", (req, res) => {
   });
 });
 app.post("/realoem/query-group", (req, res) => {
+  const { vin, group } = req.body;
+  if (!vin || !group) {
+    return res.status(400).json({ error: "vin, group and are required." });
+  }
+
+  let selected_operation = "";
+  try {
+    if (ALLOWED_GROUP_KEYS.includes(group)) {
+      selected_operation = "get_main_group.py";
+    } else {
+      throw new Error("Unsupported Keyword!");
+    }
+  } catch (e) {
+    res.status(500).json({
+      error: "Unsupported Keyword",
+    });
+  }
+
+  // Call the Python script with vin and part as arguments
+  const pythonProcess = spawn("python3", [
+    path.join(__dirname, "bmw-scraper", selected_operation),
+    vin,
+    group,
+  ]);
+
+  let output = "";
+  let error = "";
+
+  pythonProcess.stdout.on("data", (data) => {
+    output += data.toString();
+  });
+
+  pythonProcess.stderr.on("data", (data) => {
+    error += data.toString();
+  });
+
+  pythonProcess.on("close", (code) => {
+    if (code !== 0) {
+      return res.status(500).json({ error: error || "Python script error." });
+    }
+    try {
+      const resultObj = JSON.parse(output.trim());
+      res.json(resultObj);
+    } catch (e) {
+      res.status(500).json({
+        error: "Invalid JSON from Python script.",
+        details: output.trim(),
+      });
+    }
+  });
+});
+
+app.post("/realoem/query-subgroup", (req, res) => {
   const { vin, group, subgroup } = req.body;
   if (!vin || !group || !subgroup) {
     return res
