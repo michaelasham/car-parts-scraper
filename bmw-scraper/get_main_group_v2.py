@@ -3,11 +3,9 @@ import os
 import time
 import json
 import re
-import traceback
 from urllib.parse import urljoin
 from typing import List, Dict, Optional
 from playwright.sync_api import sync_playwright
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright_stealth import Stealth
 from utils import block_ads
 
@@ -101,6 +99,90 @@ def parse_table(table_text: str) -> List[Dict]:
                 current["notes"].append(cleaned)
     return items
 
+# ---------- reliability helpers (no console prints) ----------
+
+def _route_wrapper(route):
+    url = route.request.url
+    if "realoem.com" in url:
+        return route.continue_()
+    try:
+        return block_ads(route)  # keep existing behavior for non-core hosts
+    except Exception:
+        return route.continue_()
+
+def _pre_click_cleanup(page):
+    js = """
+(() => {
+  const selectors = [
+    '._1mbd8ky', '#eavgqh',
+    "[id*='sp_message_container']", "[class*='sp_message']",
+    "iframe[id^='google_ads_iframe']", "iframe[src*='pub.network']",
+    "iframe[src*='googlesyndication']", "iframe[src*='doubleclick']",
+    "[id*='aswift_']", "[class*='qc-cmp2']",
+    "#onetrust-banner-sdk", "#onetrust-consent-sdk",
+    ".fc-dialog-container", ".fc-consent-root",
+    ".cc-window", ".cookie-consent", ".consent-modal"
+  ];
+  try {
+    document.querySelectorAll(selectors.join(',')).forEach(el => {
+      el.style.setProperty('pointer-events','none','important');
+      el.style.setProperty('display','none','important');
+    });
+    const cand = Array.from(document.querySelectorAll('body *')).filter(e => {
+      const cs = getComputedStyle(e);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+      if (!(cs.position === 'fixed' || cs.position === 'sticky' || cs.position === 'absolute')) return false;
+      const r = e.getBoundingClientRect();
+      return r.width >= 200 && r.height >= 80 && r.top <= (window.innerHeight * 0.9) && r.left <= (window.innerWidth * 0.9);
+    });
+    cand.forEach(e => e.style.setProperty('pointer-events','none','important'));
+  } catch (e) {}
+})();
+"""
+    try:
+        page.evaluate(js)
+    except Exception:
+        pass
+
+def _safe_click_subgroup(page, titles_locator, idx, timeout_ms=60000):
+    import random
+    deadline = time.time() + timeout_ms / 1000.0
+    last_err = None
+    while time.time() < deadline:
+        try:
+            el = titles_locator.nth(idx)
+            anchor = el.locator("a")
+            target = anchor if anchor.count() > 0 else el
+            try:
+                target.scroll_into_view_if_needed(timeout=3000)
+            except Exception:
+                pass
+            _pre_click_cleanup(page)
+            bbox = None
+            try:
+                bbox = target.bounding_box(timeout=3000)
+            except Exception:
+                pass
+            if bbox:
+                rx = min(10, max(3, bbox["width"] * 0.1))
+                ry = min(10, max(3, bbox["height"] * 0.5))
+                target.click(timeout=5000, position={"x": rx, "y": ry})
+            else:
+                target.click(timeout=5000)
+            return
+        except Exception as e:
+            last_err = e
+            try:
+                page.mouse.wheel(0, random.choice([200, 300, 400, -200]))
+            except Exception:
+                pass
+            time.sleep(0.2)
+    if last_err:
+        raise last_err
+    raise RuntimeError("Failed to click subgroup")
+
+# ---------- main ----------
+
 def main():
     if len(sys.argv) < 3:
         print(json.dumps({"subgroups": []}, ensure_ascii=False, indent=2))
@@ -133,7 +215,7 @@ def main():
             )
             context.set_default_timeout(60_000)
             context.set_default_navigation_timeout(60_000)
-            context.route(ROUTE_PATTERN, block_ads)
+            context.route(ROUTE_PATTERN, _route_wrapper)
 
             page = context.new_page()
 
@@ -145,7 +227,6 @@ def main():
             page.locator("input[type='submit'][value='Search']").first.click()
             page.wait_for_load_state("domcontentloaded")
 
-            # optional popup close (best-effort; silent on failure)
             try:
                 page.wait_for_timeout(1000)
                 if page.locator("span.ggmtgz:has-text('×')").first.is_visible():
@@ -159,43 +240,37 @@ def main():
             page.get_by_text(ALLOWED_GROUPS[group_in], exact=False).first.click()
             page.wait_for_load_state("domcontentloaded")
 
-            # Collect subgroup candidates (prefer anchors, fallback to .title)
-            links = page.locator(":is(.title a, .title)")
-            links_count = links.count()
+            # Ensure subgroup list is fully populated
+            page.wait_for_selector(".title", state="visible", timeout=30_000)
+            page.wait_for_function("document.querySelectorAll('.title').length > 1", timeout=30_000)
 
-            sub_items = []
-            for i in range(links_count):
-                el = links.nth(i)
+            titles = page.locator(".title")
+            count = titles.count()
+
+            # Build (index, name) list, skipping header
+            sub_items: List[Dict] = []
+            for i in range(1, count):
                 try:
-                    txt = (el.inner_text() or "").strip()
+                    txt = (titles.nth(i).inner_text() or "").strip()
                     if not txt or "REP. KIT" in txt or "VALUE PARTS" in txt:
                         continue
-                    href = el.get_attribute("href")
-                    if href:
-                        sub_items.append((txt, urljoin("https://www.realoem.com", href)))
-                    else:
-                        sub_items.append((txt, f"__index__:{i}"))
+                    sub_items.append((i, txt))
                 except Exception:
                     pass
 
-            # Apply optional filters (silently tolerate no matches)
+            # Optional filters
             if subgroup_filters:
                 norm = lambda s: s.strip().lower()
-                sub_items = [(n, h) for (n, h) in sub_items if any(f in norm(n) for f in subgroup_filters)]
+                sub_items = [(i, n) for (i, n) in sub_items if any(f in norm(n) for f in subgroup_filters)]
 
-            # Visit each subgroup
-            for idx, (name, target) in enumerate(sub_items):
-                if "REP. KIT" in name or "VALUE PARTS" in name:
-                    continue
+            # Visit each subgroup via click (session-safe)
+            for idx, name in sub_items:
                 try:
-                    if target.startswith("__index__:"):
-                        nth = int(target.split(":")[1])
-                        links.nth(nth).click()
-                        page.wait_for_load_state("domcontentloaded")
-                    else:
-                        page.goto(target, wait_until="domcontentloaded")
+                    _pre_click_cleanup(page)
+                    _safe_click_subgroup(page, titles, idx, timeout_ms=60_000)
+                    page.wait_for_load_state("domcontentloaded")
+                    page.locator("#partsList").wait_for(state="visible", timeout=30_000)
 
-                    page.locator("#partsList").wait_for(state="visible", timeout=10_000)
                     table_text = page.locator("#partsList").inner_text()
                     img_src = page.locator("#partsimg > img").first.get_attribute("src") or ""
                     full_img = urljoin("https://www.realoem.com", img_src)
@@ -209,11 +284,13 @@ def main():
                 except Exception:
                     pass
                 finally:
-                    if target.startswith("__index__:"):
-                        try:
-                            page.go_back(wait_until="domcontentloaded")
-                        except Exception:
-                            pass
+                    try:
+                        page.go_back(wait_until="domcontentloaded")
+                        page.wait_for_selector(".title", state="visible", timeout=30_000)
+                        page.wait_for_function("document.querySelectorAll('.title').length > 1", timeout=30_000)
+                        titles = page.locator(".title")  # re-evaluate after navigation
+                    except Exception:
+                        pass
 
         finally:
             try:
