@@ -31,7 +31,7 @@ ALLOWED_GROUPS = {
     "bodywork": "BODYWORK",
     "vehicle trim": "VEHICLE TRIM",
     "seats": "SEATS",
-    "heating and air conditioning" : "HEATER AND AIR CONDITIONING",
+    "heater and air conditioning" : "HEATER AND AIR CONDITIONING",
     "sliding roof / folding top": "SLIDING ROOF / FOLDING TOP",
     "vehicle electrical system": "VEHICLE ELECTRICAL SYSTEM",
     "instruments measuring systems": "INSTRUMENTS, MEASURING SYSTEMS",
