@@ -136,5 +136,7 @@ class GeneralOperator:
         details["market"] = self.page.locator("option[selected='selected']").nth(6).inner_text()
         details["prod_month"] = self.page.locator("option[selected='selected']").nth(7).inner_text()
         details["engine"] = self.page.locator("option[selected='selected']").nth(8).inner_text()
+        details["type_code"] = self.page.get_by_text("You have Selected: ").inner_text().split("Type Code: ")[-1]
+        details["id"] = self.page.locator("input[type=hidden]").get_attribute("value") 
         return details
         
